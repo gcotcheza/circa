@@ -9,30 +9,10 @@ use Illuminate\Console\Command;
 use App\Services\Vision\PhotoStore;
 
 /**
- * Photo retention: delete originals past their keep-window, keep thumbnails.
- *
- * `meal_items` is the record of what was eaten; the photograph is evidence
- * for a decision already made and confirmed, so a year of full-resolution
- * dinners is a liability with no matching benefit — every one is a picture
- * of somebody's home. The 256 px thumbnail survives because a list of meals
- * with a picture beside each is how a human recognises "that Tuesday", and
- * costs nothing to keep forever.
- *
- * `meal_photos.path` is REPOINTED at the thumbnail rather than nulled (the
- * step-1 migration sketched nulling, which would orphan the thumbnail and
- * leave nothing on screen). Paths are prefixed (`originals/` vs `thumbs/`),
- * so the column keeps saying which kind of image it holds — how the
- * re-analyse endpoint knows to refuse rather than send a postage stamp to
- * the model.
- *
- * WALKS PLATES, NOT MEALS: a dinner photographed in three courses is three
- * rows, each expiring on the MEAL's `eaten_at` rather than its own
- * `created_at`, so a meal's plates disappear together rather than the
- * dessert outliving the main course.
- *
- * IDEMPOTENT BY CONSTRUCTION: it only selects rows still under `originals/`,
- * and the first thing it does to one is stop it being one — run it twice in
- * a minute and the second run finds nothing.
+ * Deletes meal-photo originals past retention; thumbnails and the row
+ * survive, repointed rather than nulled. Idempotent: only rows still under
+ * `originals/` are selected. See docs/rationale-app.md §
+ * "PruneMealPhotosCommand: what prune repoints, and why per plate".
  */
 final class PruneMealPhotosCommand extends Command
 {

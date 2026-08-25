@@ -508,7 +508,7 @@ if [[ "${RUN_CHECKS}" -eq 1 ]]; then
 
     echo
     say 'static analysis (phpstan, level 8 + larastan)'
-    note 'one process, ~90s — see the parallel: block in phpstan.neon for why'
+    note 'one process, ~90s — see docs/rationale-app.md § "Static analysis" for why'
     echo
 
     set +e

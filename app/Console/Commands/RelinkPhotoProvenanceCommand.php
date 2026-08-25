@@ -15,22 +15,10 @@ use App\Services\Vision\StoredAnswer;
 
 /**
  * Put back the plate an item came off, from the answer that named it.
- *
- * Repairs meals where `MealWriter::update()` used to drop `meal_photo_id`
- * on every edit (fixed at the write path; this repairs the rows already
- * written). Moves ONLY `meal_photo_id` — never portions, shares,
- * `confirmed_at`, or totals — and only for items with NO current plate, via
- * a bare column update that bypasses `MealItem::creating`'s portion
- * arithmetic. Identity is the slug (`meal_items.slug` / `Str::slug`);
- * ambiguous or absent matches are left alone and reported rather than
- * guessed. Dry run by default:
- *
- *   php artisan vision:relink 3d408782-…            # show what it would link
- *   php artisan vision:relink 3d408782-… --apply    # write it
- *
- * See docs/rationale-app.md § "RelinkPhotoProvenanceCommand: what broke and
- * why this is a command, not a migration" for the full incident and design
- * reasoning.
+ * Moves only `meal_photo_id`, only for items with no current plate; dry
+ * run by default. See docs/rationale-app.md §
+ * "RelinkPhotoProvenanceCommand: what broke and why this is a command,
+ * not a migration".
  */
 final class RelinkPhotoProvenanceCommand extends Command
 {
@@ -154,13 +142,9 @@ final class RelinkPhotoProvenanceCommand extends Command
     }
 
     /**
-     * Every slug the model named, and which entries named it. One entry per
-     * PLATE (plus the text path, as null), read from that entry's most
-     * recent successful answer — a re-analysed plate is described by what
-     * it says now, not the answer that was replaced. Values are
-     * deduplicated scopes, not a count: a single answer listing "rice"
-     * twice is still one entry naming it, not the ambiguity this guards
-     * against.
+     * Reads each plate's most recent successful answer, not a superseded
+     * one; values are deduplicated scopes, so one item named twice isn't
+     * false ambiguity.
      *
      * @return array<string, list<int|null>>
      */
@@ -175,8 +159,8 @@ final class RelinkPhotoProvenanceCommand extends Command
             ->orderBy('id')
             ->get();
 
-        // Keyed by scope so the last row wins, which `orderBy('id')` makes the
-        // latest attempt on that plate.
+        // Keyed by scope so the last row wins — orderBy('id') makes that the
+        // latest attempt.
         $latest = [];
 
         foreach ($requests as $request) {
@@ -209,8 +193,8 @@ final class RelinkPhotoProvenanceCommand extends Command
     }
 
     /**
-     * The same key `meal_items.slug` was written with, so the two sides of the
-     * match cannot drift — see ProposedItemMapper::toRow and TypedItem::slug.
+     * The same key `meal_items.slug` was written with, so the two sides
+     * can't drift — see ProposedItemMapper::toRow / TypedItem::slug.
      */
     private static function slug(ProposedItem $item): string
     {
@@ -224,12 +208,8 @@ final class RelinkPhotoProvenanceCommand extends Command
     {
         DB::transaction(function () use ($matched): void {
             foreach ($matched as $itemId => $photoId) {
-                /*
-                 * A bare column update, not a model save: `MealItem::creating`
-                 * guards portion = full x share on the way in, and this row's
-                 * portions are already right and already agreed to — nothing
-                 * here may recompute them.
-                 */
+                // Bare column update, not a model save: MealItem::creating must not
+                // recompute portions that are already right and already agreed to.
                 MealItem::query()->whereKey($itemId)->update(['meal_photo_id' => $photoId]);
             }
         });

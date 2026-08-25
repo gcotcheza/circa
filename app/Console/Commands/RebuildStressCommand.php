@@ -14,28 +14,14 @@ use App\Services\Stress\StressRecorder;
 use App\Services\Stress\StressCalculator;
 
 /**
- * Recompute `stress_daily`.
+ * Nightly (routes/console.php), and by hand after any
+ * `config('health.stress')` change — fully derived, so `--all` is the
+ * whole migration procedure for a threshold edit.
  *
- *   php artisan stress:rebuild                 # the trailing `rebuild_days`
- *   php artisan stress:rebuild --all           # every day there is HRV for
- *   php artisan stress:rebuild --days=365      # a longer trailing window
- *   php artisan stress:rebuild --date=2026-07-28   # one day
- *   php artisan stress:rebuild --dry-run       # compute, print, write nothing
- *
- * Runs nightly (routes/console.php) so the table keeps up on a day nobody
- * opens the app, and by hand after any change to config('health.stress') —
- * fully derived, so `--all` is the entire migration procedure for a
- * threshold edit.
- *
- * DEFAULT IS A TRAILING WINDOW, NOT JUST YESTERDAY: a day's score is measured
- * against the 60 days behind it, so a late export shifts the baseline of
- * every day after it, not just its own — a phone offline for a fortnight, or
- * an `ingest:replay`, invalidates a stretch. `rebuild_days` (90) covers the
- * realistic worst case for one query's cost.
- *
- * IDEMPOTENT: score is a pure function of readings and config, and
- * StressRecorder only writes when the answer moved — ten runs leave one row
- * per day with one `computed_at`.
+ * Default is a trailing window, not just yesterday: a day's score is
+ * measured against the 60 days behind it, so a late export shifts the
+ * baseline of every day after it. Idempotent — StressRecorder writes only
+ * when the answer moved.
  */
 final class RebuildStressCommand extends Command
 {
@@ -110,6 +96,7 @@ final class RebuildStressCommand extends Command
             return [$first === null ? null : (string) $first, $to];
         }
 
+        // 90 covers the realistic worst case (a fortnight offline, a replay) for one query's cost.
         $days = max(1, (int) ($this->option('days') ?? config('health.stress.rebuild_days', 90)));
 
         return [$today->subDays($days - 1)->toDateString(), $to];

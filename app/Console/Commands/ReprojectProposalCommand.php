@@ -21,33 +21,11 @@ use App\Services\Meals\ConsumptionShare;
 use App\Services\Vision\ProposedItemMapper;
 
 /**
- * Rebuild a meal's proposal from the answer already on its audit row.
- *
- * WHY THIS EXISTS. `vision_requests` keeps the model's whole reply
- * (`raw_response`) and, for a text estimate, the meal exactly as typed
- * (`input_payload`) — justified for evaluating prompt changes against
- * history, but it also makes repairs possible: when a rule BETWEEN the
- * answer and the stored rows is wrong, meals written under it can be
- * rebuilt from data already on disk. The alternative, asking Claude again,
- * costs money, isn't deterministic, and replaces numbers the user already
- * saw for reasons they can't. This makes NO API call and is a no-op where
- * rules haven't changed.
- *
- * DOES NOT RE-RUN `MemoryPrefill`: the pipeline is model -> mapper ->
- * memory -> user, and memory is a live claim about what the user confirmed
- * SINCE — a confirmed meal is itself part of that history, so re-running it
- * would feed a meal its own numbers back as evidence.
- * `meals.memory_match_id`/`memory_match_score` are left as the original run
- * set them.
- *
- * DOES NOT DECIDE whether the meal is confirmed: a proposal stays a
- * proposal; a confirmed meal stays confirmed with `confirmed_at` carried
- * across, since reopening a decision already made isn't a repair. Different
- * numbers on a confirmed meal are reported and NOT written unless `--force`
- * — an unseen correction is exactly the silent change this app refuses.
- *
- *   php artisan vision:reproject 6836d96a-…            # show the diff
- *   php artisan vision:reproject 6836d96a-… --apply    # write it
+ * Rebuilds a meal's proposal from the answer already on its audit row — no
+ * API call, a no-op where the rule hasn't changed. Reported and NOT written
+ * on a confirmed meal unless `--force`. See docs/rationale-app.md §
+ * "ReprojectProposalCommand: what a rebuild carries across, and what it
+ * doesn't".
  */
 final class ReprojectProposalCommand extends Command
 {
@@ -62,8 +40,8 @@ final class ReprojectProposalCommand extends Command
     {
         $uuid = (string) $this->argument('meal');
 
-        // `meals.uuid` is a Postgres uuid column: a typo reaches the driver as
-        // a cast error, not "not found" — answered here instead.
+        // `meals.uuid` is a Postgres uuid column: a typo would otherwise
+        // reach the driver as a cast error.
         if (! Str::isUuid($uuid)) {
             $this->error('That is not a uuid.');
 
@@ -103,22 +81,9 @@ final class ReprojectProposalCommand extends Command
 
         $items = $typed === null ? $answer->items : $typed->complete($answer->items);
 
-        /*
-         * SHARES ARE CARRIED ACROSS, NOT REBUILT.
-         *
-         * `raw_response` is the model's answer to the whole bowl — it was
-         * never told about the shared plate, and re-deriving that estimate is
-         * this command's job. "I ate half of it" is the user's own claim,
-         * layered on after, and no more this command's to discard than
-         * `confirmed_at` is: a repair that silently doubled a dinner would be
-         * exactly the unexplained change this command exists to avoid.
-         *
-         * The ONE place per-item overrides survive a rebuild, and only
-         * because it can honestly match them: rows being replaced came from
-         * this same answer, so a slug on both sides is the same food. A
-         * re-analysis can't claim that — its answer is new — so it re-applies
-         * only the plate's share (see AnalyzeMealPhoto).
-         */
+        // Shares are carried across, not rebuilt. See docs/rationale-app.md
+        // § "ReprojectProposalCommand: what a rebuild carries across, and
+        // what it doesn't".
         $items = $this->withStoredShares($items, $meal, $request);
 
         $rows = $mapper->toRows($items);
@@ -127,33 +92,16 @@ final class ReprojectProposalCommand extends Command
             $rows = $typed->preserve($rows);
         }
 
-        /*
-         * Applied HERE as well as at insert time, deliberately.
-         * `MealItem::creating` guarantees the invariant into the database
-         * regardless — but the diff below compares rebuilt rows against stored
-         * ones, and until this runs the rebuilt portions are the whole plate
-         * while stored ones are the eaten half, so every shared item would
-         * falsely report as "changes its numbers" and refuse the write on a
-         * confirmed meal.
-         *
-         * Applying twice is free: ConsumptionShare derives the eaten portion
-         * from the unscaled one, idempotent by construction.
-         */
+        // Applied here too, not just at insert time: without it every shared
+        // item's rebuilt (whole-plate) portion would falsely diff against
+        // its stored (eaten) one.
         $rows = array_map(
             static fn (array $row): array => ConsumptionShare::fromRow($row)->apply($row),
             $rows
         );
 
-        /*
-         * SCOPE. A meal is a series of plates, and this request looked at
-         * one — so "stored now" is that plate's items, and the rebuild
-         * replaces only them. Diffing against the whole meal would report
-         * the main course as rows the dessert's answer "lost", and applying
-         * it would delete them.
-         *
-         * A null `meal_photo_id` is the text path: items from a description
-         * rather than a photograph.
-         */
+        // Scope is this request's one plate; diffing the whole meal would report
+        // other plates' items as "lost" and delete them. Null id = the text path.
         $scoped = $meal->items
             ->filter(static fn (MealItem $item): bool => $item->meal_photo_id === $request->meal_photo_id)
             ->values();
@@ -212,14 +160,9 @@ final class ReprojectProposalCommand extends Command
     }
 
     /**
-     * Each rebuilt item, wearing the share the user already chose for it.
-     *
-     * Matched by slug against stored rows — the same key `survivors()` uses
-     * for "same food, different numbers", one definition of identity for the
-     * whole command. A rebuilt row with no stored counterpart (an earlier
-     * rule dropped that food) falls back to the PLATE's share — the same
-     * answer a re-analysis gives — or to All on the text path, where there's
-     * no plate.
+     * Matched by slug against stored rows, the one definition of identity
+     * `survivors()` also uses; an unmatched item falls back to the plate's
+     * share, or All on the text path.
      *
      * @param  list<ProposedItem>  $items
      * @return list<ProposedItem>
@@ -235,8 +178,7 @@ final class ReprojectProposalCommand extends Command
         return array_map(static function (ProposedItem $item) use ($stored, $entry): ProposedItem {
             $slug = str($item->name)->slug()->value();
 
-            // One lookup, not has()+get(): a slug with no stored counterpart
-            // is a line added since, and the entry's own share is its answer.
+            // One lookup, not has()+get(): an unmatched slug is a line added since.
             $storedItem = $stored->get($slug);
 
             $share = $storedItem === null
@@ -295,15 +237,13 @@ final class ReprojectProposalCommand extends Command
     private function write(Meal $meal, VisionRequest $request, Collection $scoped, array $rows, string $notes): void
     {
         DB::transaction(function () use ($meal, $request, $scoped, $rows, $notes): void {
-            // Carried, not re-stamped: `confirmed_at` records when the user
-            // agreed to these numbers, and this command isn't that event.
+            // Carried, not re-stamped: `confirmed_at` records the user's own agreement.
             $confirmedAt = $scoped
                 ->filter(static fn (MealItem $item): bool => $item->confirmed_at !== null)
                 ->min('confirmed_at');
 
-            // Only this entry's rows — other plates, typed lines, barcode
-            // scans are not what this answer was about, and not this
-            // command's to rewrite.
+            // Only this entry's rows — other plates and typed lines are not
+            // what this answer was about, and not this command's to rewrite.
             $meal->items()
                 ->when(
                     $request->meal_photo_id === null,

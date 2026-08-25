@@ -13,21 +13,10 @@ use App\Services\Tdee\TdeeEstimator;
 use App\Services\Tdee\CollectingData;
 
 /**
- * Fit expenditure from the last 28 days and record it.
- *
- *   php artisan tdee:estimate                  # the current window
- *   php artisan tdee:estimate --date=2026-09-01  # as it would have looked then
- *   php artisan tdee:estimate --dry-run        # compute, print, write nothing
- *
- * Runs nightly (routes/console.php) so the window slides daily, and on
- * demand from the queue whenever a rebuild touches a date inside it.
- *
- * IDEMPOTENT: the estimate is a pure function of the window's rows, and
- * TdeeRecorder only writes when the answer moved, so running this ten
- * times leaves one row with one `computed_at` — safe on a scheduler that
- * may fire twice after a restart. Below the gate it writes NOTHING and
- * says so: an estimate from six days of food logging isn't a small
- * estimate, it's a wrong one.
+ * Nightly (routes/console.php), and on demand when a rebuild touches the
+ * window. Idempotent — TdeeRecorder writes only when the answer moved,
+ * safe on a scheduler that may fire twice after a restart — and refuses
+ * below the gate: a six-day estimate is wrong, not small.
  */
 final class EstimateTdeeCommand extends Command
 {

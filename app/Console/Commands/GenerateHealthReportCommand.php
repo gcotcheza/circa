@@ -15,29 +15,10 @@ use App\Services\Report\ReportRange;
 use App\Services\Report\ReportLauncher;
 
 /**
- * `php artisan report:generate` — the weekly cron's entry point, and the way a
- * human asks for one from a terminal.
- *
- *   report:generate                          the previous Monday-Sunday, as a
- *                                            weekly report. What the schedule
- *                                            runs, with no arguments at all.
- *   report:generate --days=14                the last fourteen days, manual.
- *   report:generate --from=… --to=…          an explicit window, manual.
- *   report:generate --sync                   run it here instead of queueing,
- *                                            so a failure is visible now.
- *   report:generate --days=182 --focus=stress
- *                                            a focused report, which is also the
- *                                            only way to ask for a range past
- *                                            the ordinary quarter.
- *
- * The no-argument case being the cron's case is deliberate: a scheduled
- * command whose behaviour depends on flags gets edited in routes/console.php
- * and subtly wrong, so the schedule entry should read as the thing it does.
- *
- * `--sync` exists because the queue is the wrong place to discover a prompt
- * change broke the schema: Horizon shows a job that ran, the row says
- * `failed`, and the reason is a sentence written for an end user. Run inline
- * and the exception, token counts and timing land on the terminal.
+ * The weekly cron's entry point (routes/console.php); no-argument behaviour
+ * must equal the cron's, or a flag edit changes the schedule invisibly.
+ * `--sync` runs inline, since Horizon otherwise shows only `failed` plus a
+ * user sentence, not the exception or timing.
  */
 final class GenerateHealthReportCommand extends Command
 {
@@ -55,8 +36,7 @@ final class GenerateHealthReportCommand extends Command
     public function handle(ReportLauncher $launcher): int
     {
         try {
-            // Before the range: focus decides the range's own ceiling, so a
-            // 182-day request is legal or not depending on what came back here.
+            // Focus decides the range's own ceiling, so it must resolve first.
             $focus = $this->focus();
             $range = $this->range($focus);
             $kind = $this->kind();
@@ -74,11 +54,7 @@ final class GenerateHealthReportCommand extends Command
                 .'   blocks: '.implode(', ', $focus->blocks()));
         }
 
-        /*
-         * The weekly path goes through the launcher so a second run over the
-         * same week returns the existing row instead of paying again; the
-         * manual path does too, for the one-at-a-time rule and the dispatch.
-         */
+        // Both paths go through the launcher, so a repeat run pays nothing.
         if (! $this->option('sync')) {
             ['report' => $report, 'started' => $started] = $launcher->launch($range, $kind, $focus);
 
@@ -110,8 +86,8 @@ final class GenerateHealthReportCommand extends Command
 
         $started = hrtime(true);
 
-        // Resolved from the container, not newed, so it gets the bound writer —
-        // the fake in a test, the real client with real timeouts in production.
+        // From the container, not newed, so it gets the bound writer — the
+        // fake in a test, the real client in production.
         app()->call([new GenerateHealthReport($report->id), 'handle']);
 
         $elapsed = (int) round((hrtime(true) - $started) / 1_000_000_000);
@@ -143,13 +119,9 @@ final class GenerateHealthReportCommand extends Command
     }
 
     /**
-     * What the report is asked to be about.
-     *
-     * Validated here rather than left to ReportFocus's own tolerance: the value
-     * object silently drops chips it doesn't recognise, right for a row read
-     * back from the database, wrong for a human at a terminal — a typo would
-     * quietly produce a full report, indistinguishable from a focused request
-     * except in the bill.
+     * Validated here, not left to ReportFocus's silent tolerance — a typo
+     * at the terminal would otherwise reach a full report, wrong only in
+     * the bill.
      *
      * @throws InvalidArgumentException
      */

@@ -8,6 +8,11 @@ the class it names rather than as a replacement for reading the code.
 
 ## Table of contents
 
+- [GeneratePwaIconsCommand: one drawn geometry, not six exported files](#generatepwaiconscommand-one-drawn-geometry-not-six-exported-files)
+- [PruneMealPhotosCommand: what prune repoints, and why per plate](#prunemealphotoscommand-what-prune-repoints-and-why-per-plate)
+- [ReprojectProposalCommand: what a rebuild carries across, and what it doesn't](#reprojectproposalcommand-what-a-rebuild-carries-across-and-what-it-doesnt)
+- [RetainBuildsCommand: why deploys need a ledger, not just files](#retainbuildscommand-why-deploys-need-a-ledger-not-just-files)
+- [Static analysis](#static-analysis)
 - [FitageImporter: why near-duplicates aren't suppressed](#fitageimporter-why-near-duplicates-arent-suppressed)
 - [TDEE Range: Equation, Uncertainty Combination, and Known Biases](#tdee-range-equation-uncertainty-combination-and-known-biases)
 - [BucketSelector: bucket overlap and rate-ceiling refusal](#bucketselector-bucket-overlap-and-rate-ceiling-refusal)
@@ -15,6 +20,218 @@ the class it names rather than as a replacement for reading the code.
 - [RelinkPhotoProvenanceCommand: what broke and why this is a command, not a migration](#relinkphotoprovenancecommand-what-broke-and-why-this-is-a-command-not-a-migration)
 - [AnalyzeMeal: why a superseded answer is recorded, not applied](#analyzemeal-why-a-superseded-answer-is-recorded-not-applied)
 - [DocumentCall: the rules every structured-output call has to get right](#documentcall-the-rules-every-structured-output-call-has-to-get-right)
+
+---
+
+## GeneratePwaIconsCommand: one drawn geometry, not six exported files
+
+`app/Console/Commands/GeneratePwaIconsCommand.php`
+
+**Why a command, not committed PNGs.** Six hand-exported files at six sizes
+and two croppings (plain, maskable) drift — one re-cut with a slightly
+different margin. Geometry is written down once, in the class constants,
+and every file, including the SVG master, is drawn from it: regenerating is
+`php artisan pwa:icons`, and the diff is either empty or intentional.
+
+**Why GD, not an SVG rasteriser.** None is installed, and adding one for six
+icons would be a new deploy dependency; ext-gd is already required (the
+photo re-encode step). PNGs are drawn with GD at 4x the output size and
+downsampled with `imagecopyresampled` — that supersampling IS the
+antialiasing, since GD's `imageantialias()` doesn't apply to thick lines or
+filled ellipses, which is all this icon is made of.
+
+**The design.** A white plate from above, a heart-rate trace, on the app's
+teal — two shapes, two colours, sized for a ~60 px home-screen icon, where a
+ring goes grey, a fork-and-knife is redundant, and a gradient fights the
+OS's own rounding. The trace itself (flat, up, hard down, flat) is
+asymmetric on purpose: a symmetric zigzag reads as a chevron, not a pulse.
+
+**Why two croppings, not one `any maskable` file.** A maskable icon crops to
+a circle inscribed in 80% of the square, so its glyph must be smaller — one
+file means either a wastefully small plain glyph or a maskable plate shaved
+off on Android.
+
+---
+
+## PruneMealPhotosCommand: what prune repoints, and why per plate
+
+`app/Console/Commands/PruneMealPhotosCommand.php`
+
+**Why originals go and thumbnails stay.** `meal_items` is the record of
+what was eaten; the photograph is evidence for a decision already made and
+confirmed, so a year of full-resolution dinners is a liability with no
+matching benefit — every one is a picture of somebody's home. The 256 px
+thumbnail survives because a list of meals with a picture beside each is
+how a human recognises "that Tuesday", and costs nothing to keep forever.
+
+**Why the path is repointed, not nulled.** An earlier design nulled
+`meal_photos.path`, which would orphan the thumbnail and leave nothing on
+screen. Paths are prefixed (`originals/` vs `thumbs/`), so the column keeps
+saying which kind of image it holds — how the re-analyse endpoint knows to
+refuse rather than send a postage stamp to the model.
+
+**Why it walks plates, not meals.** A dinner photographed in three courses
+is three rows, each expiring on the meal's `eaten_at` rather than its own
+`created_at`, so a meal's plates disappear together rather than the
+dessert outliving the main course.
+
+---
+
+## ReprojectProposalCommand: what a rebuild carries across, and what it doesn't
+
+`app/Console/Commands/ReprojectProposalCommand.php`
+
+**Why this exists.** `vision_requests` keeps the model's whole reply
+(`raw_response`) and, for a text estimate, the meal exactly as typed
+(`input_payload`) — kept for evaluating prompt changes against history, but
+it also makes repairs possible: when a rule BETWEEN the answer and the
+stored rows is wrong, meals written under it can be rebuilt from data
+already on disk, no API call, a no-op where the rule hasn't changed. Asking
+Claude again would cost money, isn't deterministic, and would replace
+numbers the user already saw for reasons they can't see.
+
+**Does not re-run `MemoryPrefill`.** The pipeline is model → mapper →
+memory → user, and memory is a live claim about what the user confirmed
+SINCE — a confirmed meal is itself part of that history, so re-running it
+would feed a meal its own numbers back as evidence. `memory_match_id` /
+`memory_match_score` are left exactly as the original run set them.
+
+**Does not decide whether the meal is confirmed.** A proposal stays a
+proposal; a confirmed meal stays confirmed with `confirmed_at` carried
+across — reopening a decision already made isn't a repair. Different
+numbers on a confirmed meal are reported and NOT written unless `--force`.
+
+**Shares are carried across, not rebuilt.** `raw_response` is the model's
+answer to the whole bowl; it was never told about the shared plate, so "I
+ate half of it" is the user's own claim, layered on after, and no more this
+command's to discard than `confirmed_at` is. Per-item overrides survive a
+rebuild because it can honestly match them by slug — rows being replaced
+came from this same answer, so a slug on both sides is the same food; a
+re-analysis can't claim that (its answer is new), so it re-applies only the
+plate's share instead (see `AnalyzeMealPhoto`).
+
+**`ConsumptionShare` is applied twice, deliberately.** `MealItem::creating`
+guarantees the invariant into the database regardless — but the diff
+compares rebuilt rows against stored ones, and until this runs the rebuilt
+portions are the whole plate while stored ones are the eaten half, so every
+shared item would falsely report as "changed" and refuse the write on a
+confirmed meal. Applying twice is free: the transform is idempotent.
+
+**Scope is the one plate the request looked at.** A meal is a series of
+plates; "stored now" means that plate's items, and the rebuild replaces
+only them — diffing against the whole meal would report the main course as
+rows the dessert's answer "lost", and applying it would delete them. A null
+`meal_photo_id` is the text path: items from a description, not a
+photograph.
+
+---
+
+## RetainBuildsCommand: why deploys need a ledger, not just files
+
+`app/Console/Commands/RetainBuildsCommand.php`
+
+**The bug this answers.** `vite build` empties `public/build`, and this app
+is a client-rendered PWA whose HTML does nothing but name one of its
+chunks — so every deploy deletes the previous build's files, and anything
+still pointing at the old one is not degraded, it's dead. A page left open
+across a deploy runs fine until its first lazy import (photo capture,
+review sheet, barcode scanner — not corners of the app, how a meal gets
+logged): the chunk 404s and the button does nothing forever. A document
+served from any cache names a deleted entry chunk, which for a
+client-rendered app is a blank white page with no server-side symptom.
+(`NoStoreHtmlResponses` attacks that one from the other end — both, because
+they fail independently.) Neither showed up in the nginx log because
+`location ^~ /build/` had `access_log off`, hiding the 404 that would have
+named the problem for a day; fixed in `docker/web/nginx.conf`.
+
+**How it works: a ledger, because a file's mtime is not its build.**
+`build.emptyOutDir` is `false` in `vite.config.js`, so a build adds files
+rather than replacing the directory — something has to delete the old
+ones, and that something needs to know which file belonged to which
+build, which the filesystem can't answer (an unchanged chunk keeps its
+name and timestamp across builds). So each run writes a snapshot,
+`public/build/builds/<version>.json`, listing exactly the files the
+manifest referenced. `<version>` is the md5 prefix of `manifest.json`, the
+same string `BuildAssets` uses for the service worker's cache name, so "a
+build" means the same thing in both places. Retention keeps the newest N
+snapshots, keeps the union of files they name, deletes everything else in
+`assets/` — a chunk shared by three builds survives until the last of them
+is dropped.
+
+**Why it runs twice.** In the deploy, straight after the asset build (the
+moment the new snapshot has to be written and the pruning is wanted), and
+on a schedule (`routes/console.php`), because `emptyOutDir: false` turns a
+forgotten deploy step into a filling disk rather than a no-op — worst case
+is a day of extra chunks. Idempotent: a run with no new build re-reads the
+same manifest, finds its snapshot already there, deletes nothing still
+referenced.
+
+**Why three.** The window that matters is how long a phone can hold a
+reference to an old build and still be rescued, bounded by how often we
+deploy on a bad day — three times, on the day this was written. Beyond
+three the returns are nothing: a device that missed four deploys has been
+asleep for days and fetches fresh HTML the moment it wakes.
+
+**A kept file keeps its source map.** `vite.config.js` sets
+`build.sourcemap: true`, but Vite doesn't list `app-XYZ.js.map` in the
+manifest, only `app-XYZ.js` — so a prune keyed purely off the manifest
+deleted every map, on every deploy, immediately, with no visible symptom
+until an inspector needed one months later. Each retained name is now kept
+with `.map` appended, whether or not that file exists. Pruning is also
+scoped to `assets/` alone, on purpose: `public/build` also holds
+`manifest.json` and the ledger, and pruning the whole tree would be one
+glob away from deleting its own bookkeeping.
+
+---
+
+## Static analysis
+
+`phpstan.neon`
+
+**Why Larastan, not plain PHPStan.** Eloquent is built out of `__call`,
+`__get` and static proxies, so to plain PHPStan `User::query()->where(...)
+->first()` is a call on a class that has no such method, returning
+something it cannot name. Larastan is the PHPStan extension that teaches it
+the framework: model properties from the migrations/casts, builder chains,
+facades, container binds. Without it every model line in this app is a
+false positive and the baseline is noise rather than an inventory.
+
+**Why a baseline, and why it is empty.** `phpstan-baseline.neon` was the
+ratchet that let analysis be switched on at all: it listed the 579
+findings that already existed, so CI was green from day one and any NEW
+error failed the build. It was an inventory of debt, checked in and
+readable, not a silencer — and it has since been paid off, so it is empty
+and stays included. An empty inventory is still the mechanism: a finding
+that shows up here has to be fixed or deliberately added back. To
+regenerate: `vendor/bin/phpstan analyse --generate-baseline
+--allow-empty-baseline`.
+
+**Why level 8.** It's the highest level that is about correctness rather
+than annotation completeness: it checks nullability on top of levels 0-7's
+unknown methods, wrong argument types, dead conditions and bad returns.
+Level 9 ("no mixed") and 10 are largely a docblock-writing exercise on a
+codebase this size, and would bury the real findings in the baseline.
+
+**Why one process, deliberately (`parallel.maximumNumberOfProcesses: 1`).**
+PHPStan parallelises by forking a worker per core, and each worker boots
+the whole framework through Larastan. The CI app container is capped at
+768 MB (`docker-compose.ci.yml`) and this box runs two of those stacks plus
+the live site, so four workers at ~250 MB each do not fit; when they don't,
+the workers die and PHPStan reports what the survivors found — three
+consecutive runs on this codebase returned 487, 358 and 527 errors before
+this line existed. A single process is slower (~90s) but gives the same
+answer every time, which is the only kind of answer a baseline can be
+built from.
+
+**`checkModelProperties: true`.** Larastan reads the model's `$casts`,
+`$fillable` and the migrations to know what `$meal->eaten_at` is. Left on
+(the default) because this app leans on generated columns and
+`immutable_datetime` casts, which is exactly where a wrong assumption
+costs an afternoon.
+
+**`report_unmatched_ignored_errors` (default `true`).** What keeps the
+baseline honest: once a baselined error is actually fixed, the stale entry
+fails the build and has to be removed.
 
 ---
 

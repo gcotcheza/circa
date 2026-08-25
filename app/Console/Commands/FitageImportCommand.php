@@ -13,20 +13,10 @@ use App\Services\Fitage\FitageImporter;
 use App\Services\Fitage\Exceptions\UnreadableExport;
 
 /**
- * Import the scale's own .xlsx exports.
- *
- *   php artisan fitage:import --dry-run          # say what would happen
- *   php artisan fitage:import                    # do it
- *   php artisan fitage:import --dir=/tmp/exports
- *   php artisan fitage:import --file=one.xlsx
- *
- * The directory is the argument, not the file — exports arrive as
- * overlapping, ever-growing windows, so pointing at all of them every time
- * turns "another chunk arrived" into a re-run rather than a decision about
- * which files are new (overlaps are free; see FitageImporter's unique key).
- *
- * `--dry-run` prints the exact numbers the real run would, from the same
- * comparison, writing nothing.
+ * Directory, not file: exports arrive as overlapping windows, so pointing
+ * at all of them every time is a re-run, not a "what's new" decision.
+ * Overlaps are free — see docs/rationale-app.md § "FitageImporter: why
+ * near-duplicates aren't suppressed".
  */
 final class FitageImportCommand extends Command
 {
@@ -180,8 +170,7 @@ final class FitageImportCommand extends Command
     }
 
     /**
-     * The files to read, sorted so two runs of the same directory report in the
-     * same order.
+     * Sorted so two runs of the same directory report in the same order.
      *
      * @return list<string>
      *

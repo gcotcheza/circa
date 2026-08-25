@@ -9,12 +9,8 @@ use Illuminate\Console\Command;
 use App\Services\Validation\ValidationArtifacts;
 
 /**
- * Write the browser's copy of the validation rules, and the cases that hold it to them.
- *
- *   php artisan validation:export           # rewrite both files
- *   php artisan validation:export --check   # say whether they are stale, write nothing
- *
- * The agreement test fails the gate while either file is stale, and names this command.
+ * The agreement test fails the gate while either file is stale, and names
+ * this command.
  */
 final class ExportValidationCommand extends Command
 {

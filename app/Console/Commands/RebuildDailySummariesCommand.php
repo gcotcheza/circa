@@ -11,20 +11,10 @@ use App\Services\Rollup\SummaryRebuilder;
 use App\Services\Rollup\DailySummaryBuilder;
 
 /**
- * Rebuild `daily_summaries` for a range, or for every day that has data.
- *
- * The table is fully derived, so this is never a repair — it's the normal
- * way to apply a change: move the complete-log floor in config, run this,
- * and the whole history reflects the new rule. No migration to write, nothing
- * to reconcile — the payoff for keeping the table derived.
- *
- *   php artisan summaries:rebuild                       # every day with data
- *   php artisan summaries:rebuild --date=2026-08-06
- *   php artisan summaries:rebuild --from=2026-08-01 --to=2026-08-07
- *   php artisan summaries:rebuild --queue               # hand it to Horizon
- *
- * Synchronous by default: a backfill is watched by a human, and 100 days
- * take a couple of seconds. `--queue` is for when it isn't.
+ * The table is fully derived, so this is never a repair — move the
+ * complete-log floor in config, run this, and the whole history reflects
+ * the new rule. Synchronous by default: a backfill is watched by a human;
+ * `--queue` is for a run that is NOT watched.
  */
 final class RebuildDailySummariesCommand extends Command
 {
@@ -85,11 +75,8 @@ final class RebuildDailySummariesCommand extends Command
     }
 
     /**
-     * Every local date that has anything to summarise, or the requested slice.
-     *
-     * The union is over the three tables feeding a summary — a day with only
-     * a meal and no metrics is still a day, and so is a night of sleep with
-     * no waking data behind it.
+     * Union of the three tables feeding a summary — a day with only a meal
+     * and no metrics is still a day, and so is a night with no waking data.
      *
      * @return list<string>
      */

@@ -17,25 +17,11 @@ use App\Services\Rollup\SummaryRebuilder;
 use App\Services\Ingest\RawPayloadProcessor;
 
 /**
- * Re-run the parser over every banked payload.
- *
- * This is why `raw_ingest_payloads` is permanent: when the parser is
- * wrong or a classification changes, the fix is to change the code and
- * replay, not patch derived rows by hand — everything downstream is
- * reproducible from this command. IT IS ALSO THE BACKFILL: the scope is
- * deliberately EVERY payload with no filter, which is what made two years
- * of workout history land the moment the workout parser existed, since
- * bytes marked `empty` for years turned into rows on one replay.
- * Synchronous, through the same RawPayloadProcessor the queued job uses,
- * so a replay never tests a code path production doesn't run.
- *
- *   php artisan ingest:replay                 # everything
- *   php artisan ingest:replay --from-id=90    # tail only
- *   php artisan ingest:replay --dry-run       # parse, report, roll back
- *
- * Run it twice to prove idempotence: the second pass must report 0
- * inserted, 0 updated, identical counts — stronger than matching totals,
- * since upserts carry a WHERE that skips no-op updates.
+ * Why `raw_ingest_payloads` is permanent: a wrong parse or classification
+ * is fixed by changing the code and replaying, not patching derived rows —
+ * everything downstream is reproducible from this command, with no filter
+ * scoped out, so a new parser backfills its own history in one run.
+ * Synchronous, through the same processor the queued job uses.
  */
 final class ReplayIngestCommand extends Command
 {
@@ -79,9 +65,8 @@ final class ReplayIngestCommand extends Command
         ));
         $this->newLine();
 
-        // A dry run is a real run thrown away: same writes, conflicts and
-        // statistics, rolled back at the end — anything less would report
-        // what the parser INTENDS, not what it does.
+        // A dry run is a real run thrown away, rolled back at the end — anything
+        // less would report what the parser intends, not what it does.
         if ($dryRun) {
             DB::beginTransaction();
         }
@@ -118,10 +103,8 @@ final class ReplayIngestCommand extends Command
         $this->newLine();
         $this->summarise($totals, $failed, $before, $dryRun);
 
-        // A replay rewrites history, so every touched day has a stale
-        // summary. Unique + delayed jobs mean 112 payloads over 100 days
-        // queue 100 rebuilds, not 112; a dry run queues none, since nothing
-        // it did survived the rollback.
+        // Every touched day has a stale summary; unique + delayed jobs collapse
+        // repeat dates into one rebuild each. A dry run queues none.
         if (! $dryRun && ! $this->option('no-rebuild') && $totals->dirtyDates !== []) {
             $rebuilder->queue($totals->dirtyDates);
 
@@ -214,6 +197,8 @@ final class ReplayIngestCommand extends Command
             $this->warn('Dry run: everything above was rolled back.');
         }
 
+        // Idempotence proof: a second run must show 0 inserted/updated here —
+        // stronger than matching totals, since the upserts' WHERE skips no-ops.
         if ($totals->touched() === 0 && $failed === 0) {
             $this->newLine();
             $this->info('Nothing changed — this replay was a provable no-op.');
