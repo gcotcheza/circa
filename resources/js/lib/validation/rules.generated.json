@@ -1,0 +1,2974 @@
+{
+    "generated_by": "php artisan validation:export",
+    "requests": {
+        "HealthReportRequest": {
+            "fields": {
+                "days": {
+                    "attribute": "days",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "integer",
+                            "message": "The :attribute field must be an integer."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "1"
+                            ],
+                            "message": "The :attribute field must be at least 1."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "3650"
+                            ],
+                            "message": "The :attribute field must not be greater than 3650."
+                        }
+                    ]
+                },
+                "from": {
+                    "attribute": "from",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "date_format",
+                            "params": [
+                                "Y-m-d"
+                            ],
+                            "message": "The start date must look like 2026-08-09."
+                        }
+                    ]
+                },
+                "to": {
+                    "attribute": "to",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "date_format",
+                            "params": [
+                                "Y-m-d"
+                            ],
+                            "message": "The end date must look like 2026-08-09."
+                        }
+                    ]
+                },
+                "focus": {
+                    "attribute": "focus",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "array",
+                            "message": "The :attribute field must be an array."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "5"
+                            ],
+                            "message": "The :attribute field must not have more than 5 items."
+                        }
+                    ]
+                },
+                "focus.*": {
+                    "attribute": "focus.:index",
+                    "rules": [
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "in",
+                            "params": [
+                                "stress",
+                                "sleep",
+                                "food",
+                                "training",
+                                "weight"
+                            ],
+                            "message": "That is not one of the areas a report can focus on."
+                        }
+                    ]
+                },
+                "focusText": {
+                    "attribute": "focus text",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "500"
+                            ],
+                            "message": "Keep the focus note under 500 characters."
+                        }
+                    ]
+                }
+            }
+        },
+        "MealEstimateRequest": {
+            "fields": {
+                "uuid": {
+                    "attribute": "uuid",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "uuid",
+                            "message": "The :attribute field must be a valid UUID."
+                        }
+                    ]
+                },
+                "idempotency_key": {
+                    "attribute": "idempotency key",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "8"
+                            ],
+                            "message": "The :attribute field must be at least 8 characters."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "128"
+                            ],
+                            "message": "The :attribute field must not be greater than 128 characters."
+                        }
+                    ]
+                },
+                "date": {
+                    "attribute": "date",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "date_format",
+                            "params": [
+                                "Y-m-d"
+                            ],
+                            "message": "The :attribute field must match the format Y-m-d."
+                        }
+                    ]
+                },
+                "time": {
+                    "attribute": "time",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "date_format",
+                            "params": [
+                                "H:i"
+                            ],
+                            "message": "The :attribute field must match the format H:i."
+                        }
+                    ]
+                },
+                "meal_type": {
+                    "attribute": "meal type",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "enum",
+                            "params": [
+                                "breakfast",
+                                "lunch",
+                                "dinner",
+                                "snack"
+                            ],
+                            "message": "The selected :attribute is invalid."
+                        }
+                    ]
+                },
+                "notes": {
+                    "attribute": "notes",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000 characters."
+                        }
+                    ]
+                },
+                "items": {
+                    "attribute": "items",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "array",
+                            "message": "The :attribute field must be an array."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "1"
+                            ],
+                            "message": "The :attribute field must have at least 1 items."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "40"
+                            ],
+                            "message": "The :attribute field must not have more than 40 items."
+                        }
+                    ]
+                },
+                "items.*.name": {
+                    "attribute": "food name",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "191"
+                            ],
+                            "message": "The :attribute field must not be greater than 191 characters."
+                        }
+                    ]
+                },
+                "items.*.basis": {
+                    "attribute": "entry mode",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "in",
+                            "params": [
+                                "absolute",
+                                "per_100g"
+                            ],
+                            "message": "The selected :attribute is invalid."
+                        }
+                    ]
+                },
+                "items.*.kcal": {
+                    "attribute": "calories",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "20000"
+                            ],
+                            "message": "The :attribute field must not be greater than 20000."
+                        }
+                    ]
+                },
+                "items.*.protein": {
+                    "attribute": "protein",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000."
+                        }
+                    ]
+                },
+                "items.*.carbs": {
+                    "attribute": "carbs",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000."
+                        }
+                    ]
+                },
+                "items.*.fat": {
+                    "attribute": "fat",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000."
+                        }
+                    ]
+                },
+                "items.*.grams": {
+                    "attribute": "portion",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "10000"
+                            ],
+                            "message": "The :attribute field must not be greater than 10000."
+                        }
+                    ]
+                },
+                "items.*.kcal_per_100g": {
+                    "attribute": "calories per 100 g",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "900"
+                            ],
+                            "message": "The :attribute field must not be greater than 900."
+                        }
+                    ]
+                },
+                "items.*.protein_per_100g": {
+                    "attribute": "protein per 100 g",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "100"
+                            ],
+                            "message": "The :attribute field must not be greater than 100."
+                        }
+                    ]
+                },
+                "items.*.carbs_per_100g": {
+                    "attribute": "carbs per 100 g",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "100"
+                            ],
+                            "message": "The :attribute field must not be greater than 100."
+                        }
+                    ]
+                },
+                "items.*.fat_per_100g": {
+                    "attribute": "fat per 100 g",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "100"
+                            ],
+                            "message": "The :attribute field must not be greater than 100."
+                        }
+                    ]
+                },
+                "items.*.food_product_id": {
+                    "attribute": "scanned product",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "32"
+                            ],
+                            "message": "The :attribute field must not be greater than 32 characters."
+                        },
+                        {
+                            "rule": "exists",
+                            "params": [
+                                "food_products",
+                                "barcode"
+                            ],
+                            "server_only": true
+                        }
+                    ]
+                },
+                "items.*.share_fraction": {
+                    "attribute": "share eaten",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0.01"
+                            ],
+                            "message": "The :attribute field must be at least 0.01."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "1"
+                            ],
+                            "message": "The :attribute field must not be greater than 1."
+                        }
+                    ]
+                }
+            }
+        },
+        "MealPhotoRequest": {
+            "fields": {
+                "uuid": {
+                    "attribute": "uuid",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "uuid",
+                            "message": "The :attribute field must be a valid UUID."
+                        }
+                    ]
+                },
+                "idempotency_key": {
+                    "attribute": "idempotency key",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "8"
+                            ],
+                            "message": "The :attribute field must be at least 8 characters."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "128"
+                            ],
+                            "message": "The :attribute field must not be greater than 128 characters."
+                        }
+                    ]
+                },
+                "client_id": {
+                    "attribute": "client id",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "uuid",
+                            "message": "The :attribute field must be a valid UUID."
+                        }
+                    ]
+                },
+                "date": {
+                    "attribute": "date",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "date_format",
+                            "params": [
+                                "Y-m-d"
+                            ],
+                            "message": "The :attribute field must match the format Y-m-d."
+                        }
+                    ]
+                },
+                "time": {
+                    "attribute": "time",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "date_format",
+                            "params": [
+                                "H:i"
+                            ],
+                            "message": "The :attribute field must match the format H:i."
+                        }
+                    ]
+                },
+                "hint": {
+                    "attribute": "hint",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "500"
+                            ],
+                            "message": "The :attribute field must not be greater than 500 characters."
+                        }
+                    ]
+                },
+                "photo": {
+                    "attribute": "photo",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "server_only": true
+                        },
+                        {
+                            "rule": "file",
+                            "server_only": true
+                        },
+                        {
+                            "rule": "image",
+                            "server_only": true
+                        },
+                        {
+                            "rule": "mimes",
+                            "params": [
+                                "jpeg",
+                                "jpg",
+                                "png",
+                                "webp"
+                            ],
+                            "server_only": true
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "8192"
+                            ],
+                            "server_only": true
+                        }
+                    ]
+                }
+            }
+        },
+        "MealProposalRequest": {
+            "fields": {
+                "date": {
+                    "attribute": "date",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "date_format",
+                            "params": [
+                                "Y-m-d"
+                            ],
+                            "message": "The :attribute field must match the format Y-m-d."
+                        }
+                    ]
+                },
+                "time": {
+                    "attribute": "time",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "date_format",
+                            "params": [
+                                "H:i"
+                            ],
+                            "message": "The :attribute field must match the format H:i."
+                        }
+                    ]
+                },
+                "meal_type": {
+                    "attribute": "meal type",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "enum",
+                            "params": [
+                                "breakfast",
+                                "lunch",
+                                "dinner",
+                                "snack"
+                            ],
+                            "message": "The selected :attribute is invalid."
+                        }
+                    ]
+                },
+                "notes": {
+                    "attribute": "notes",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000 characters."
+                        }
+                    ]
+                },
+                "client_id": {
+                    "attribute": "client id",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "uuid",
+                            "message": "The :attribute field must be a valid UUID."
+                        }
+                    ]
+                },
+                "share_fraction": {
+                    "attribute": "share fraction",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0.01"
+                            ],
+                            "message": "The :attribute field must be at least 0.01."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "1"
+                            ],
+                            "message": "The :attribute field must not be greater than 1."
+                        }
+                    ]
+                },
+                "hint": {
+                    "attribute": "hint",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "500"
+                            ],
+                            "message": "The :attribute field must not be greater than 500 characters."
+                        }
+                    ]
+                },
+                "items": {
+                    "attribute": "items",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "array",
+                            "message": "The :attribute field must be an array."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "1"
+                            ],
+                            "message": "The :attribute field must have at least 1 items."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "40"
+                            ],
+                            "message": "The :attribute field must not have more than 40 items."
+                        }
+                    ]
+                },
+                "items.*.name": {
+                    "attribute": "food name",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "191"
+                            ],
+                            "message": "The :attribute field must not be greater than 191 characters."
+                        }
+                    ]
+                },
+                "items.*.confidence": {
+                    "attribute": "confidence",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "in",
+                            "params": [
+                                "low",
+                                "medium",
+                                "high"
+                            ],
+                            "message": "The selected :attribute is invalid."
+                        }
+                    ]
+                },
+                "items.*.share_fraction": {
+                    "attribute": "share eaten",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0.01"
+                            ],
+                            "message": "The :attribute field must be at least 0.01."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "1"
+                            ],
+                            "message": "The :attribute field must not be greater than 1."
+                        }
+                    ]
+                },
+                "items.*.portion_g_min": {
+                    "attribute": "portion range start",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "10000"
+                            ],
+                            "message": "The :attribute field must not be greater than 10000."
+                        }
+                    ]
+                },
+                "items.*.portion_g_max": {
+                    "attribute": "portion range end",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "10000"
+                            ],
+                            "message": "The :attribute field must not be greater than 10000."
+                        },
+                        {
+                            "rule": "gte",
+                            "params": [
+                                "items.*.portion_g_min"
+                            ],
+                            "message": "One item has a portion that ends below where it starts. The smaller number goes in the first box."
+                        }
+                    ]
+                },
+                "items.*.kcal_min": {
+                    "attribute": "calorie range start",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "20000"
+                            ],
+                            "message": "The :attribute field must not be greater than 20000."
+                        }
+                    ]
+                },
+                "items.*.kcal_max": {
+                    "attribute": "calorie range end",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "20000"
+                            ],
+                            "message": "The :attribute field must not be greater than 20000."
+                        },
+                        {
+                            "rule": "gte",
+                            "params": [
+                                "items.*.kcal_min"
+                            ],
+                            "message": "One item has a calorie range that ends below where it starts. The smaller number goes in the first box."
+                        }
+                    ]
+                },
+                "items.*.protein_g_min": {
+                    "attribute": "protein range start",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000."
+                        }
+                    ]
+                },
+                "items.*.protein_g_max": {
+                    "attribute": "protein range end",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000."
+                        },
+                        {
+                            "rule": "gte",
+                            "params": [
+                                "items.*.protein_g_min"
+                            ],
+                            "message": "One item has a protein range that ends below where it starts. The smaller number goes in the first box."
+                        }
+                    ]
+                },
+                "items.*.carbs_g_min": {
+                    "attribute": "carbs range start",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000."
+                        }
+                    ]
+                },
+                "items.*.carbs_g_max": {
+                    "attribute": "carbs range end",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000."
+                        },
+                        {
+                            "rule": "gte",
+                            "params": [
+                                "items.*.carbs_g_min"
+                            ],
+                            "message": "One item has a carbs range that ends below where it starts. The smaller number goes in the first box."
+                        }
+                    ]
+                },
+                "items.*.fat_g_min": {
+                    "attribute": "fat range start",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000."
+                        }
+                    ]
+                },
+                "items.*.fat_g_max": {
+                    "attribute": "fat range end",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000."
+                        },
+                        {
+                            "rule": "gte",
+                            "params": [
+                                "items.*.fat_g_min"
+                            ],
+                            "message": "One item has a fat range that ends below where it starts. The smaller number goes in the first box."
+                        }
+                    ]
+                }
+            }
+        },
+        "MealReanalyzeRequest": {
+            "fields": {
+                "idempotency_key": {
+                    "attribute": "idempotency key",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "8"
+                            ],
+                            "message": "The :attribute field must be at least 8 characters."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "128"
+                            ],
+                            "message": "The :attribute field must not be greater than 128 characters."
+                        }
+                    ]
+                },
+                "hint": {
+                    "attribute": "hint",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "500"
+                            ],
+                            "message": "The :attribute field must not be greater than 500 characters."
+                        }
+                    ]
+                },
+                "share_fraction": {
+                    "attribute": "share fraction",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0.01"
+                            ],
+                            "message": "The :attribute field must be at least 0.01."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "1"
+                            ],
+                            "message": "The :attribute field must not be greater than 1."
+                        }
+                    ]
+                },
+                "items": {
+                    "attribute": "items",
+                    "rules": [
+                        {
+                            "rule": "sometimes"
+                        },
+                        {
+                            "rule": "array",
+                            "message": "The :attribute field must be an array."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "1"
+                            ],
+                            "message": "The :attribute field must have at least 1 items."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "40"
+                            ],
+                            "message": "The :attribute field must not have more than 40 items."
+                        }
+                    ]
+                },
+                "items.*.name": {
+                    "attribute": "food name",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "191"
+                            ],
+                            "message": "The :attribute field must not be greater than 191 characters."
+                        }
+                    ]
+                },
+                "items.*.share_fraction": {
+                    "attribute": "share eaten",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0.01"
+                            ],
+                            "message": "The :attribute field must be at least 0.01."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "1"
+                            ],
+                            "message": "The :attribute field must not be greater than 1."
+                        }
+                    ]
+                },
+                "items.*.portion_g": {
+                    "attribute": "portion",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "10000"
+                            ],
+                            "message": "The :attribute field must not be greater than 10000."
+                        }
+                    ]
+                },
+                "items.*.kcal": {
+                    "attribute": "calories",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "20000"
+                            ],
+                            "message": "The :attribute field must not be greater than 20000."
+                        }
+                    ]
+                },
+                "items.*.protein_g": {
+                    "attribute": "protein",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000."
+                        }
+                    ]
+                },
+                "items.*.carbs_g": {
+                    "attribute": "carbs",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000."
+                        }
+                    ]
+                },
+                "items.*.fat_g": {
+                    "attribute": "fat",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000."
+                        }
+                    ]
+                }
+            }
+        },
+        "MealReestimateRequest": {
+            "fields": {
+                "idempotency_key": {
+                    "attribute": "idempotency key",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "8"
+                            ],
+                            "message": "The :attribute field must be at least 8 characters."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "128"
+                            ],
+                            "message": "The :attribute field must not be greater than 128 characters."
+                        }
+                    ]
+                },
+                "items": {
+                    "attribute": "items",
+                    "rules": [
+                        {
+                            "rule": "sometimes"
+                        },
+                        {
+                            "rule": "array",
+                            "message": "The :attribute field must be an array."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "1"
+                            ],
+                            "message": "The :attribute field must have at least 1 items."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "40"
+                            ],
+                            "message": "The :attribute field must not have more than 40 items."
+                        }
+                    ]
+                },
+                "items.*.name": {
+                    "attribute": "food name",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "191"
+                            ],
+                            "message": "The :attribute field must not be greater than 191 characters."
+                        }
+                    ]
+                },
+                "items.*.share_fraction": {
+                    "attribute": "share eaten",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0.01"
+                            ],
+                            "message": "The :attribute field must be at least 0.01."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "1"
+                            ],
+                            "message": "The :attribute field must not be greater than 1."
+                        }
+                    ]
+                },
+                "items.*.portion_g": {
+                    "attribute": "portion",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "10000"
+                            ],
+                            "message": "The :attribute field must not be greater than 10000."
+                        }
+                    ]
+                },
+                "items.*.kcal": {
+                    "attribute": "calories",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "20000"
+                            ],
+                            "message": "The :attribute field must not be greater than 20000."
+                        }
+                    ]
+                },
+                "items.*.protein_g": {
+                    "attribute": "protein",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000."
+                        }
+                    ]
+                },
+                "items.*.carbs_g": {
+                    "attribute": "carbs",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000."
+                        }
+                    ]
+                },
+                "items.*.fat_g": {
+                    "attribute": "fat",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000."
+                        }
+                    ]
+                }
+            }
+        },
+        "MealRequest": {
+            "fields": {
+                "uuid": {
+                    "attribute": "uuid",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "uuid",
+                            "message": "The :attribute field must be a valid UUID."
+                        }
+                    ]
+                },
+                "date": {
+                    "attribute": "date",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "date_format",
+                            "params": [
+                                "Y-m-d"
+                            ],
+                            "message": "The :attribute field must match the format Y-m-d."
+                        }
+                    ]
+                },
+                "time": {
+                    "attribute": "time",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "date_format",
+                            "params": [
+                                "H:i"
+                            ],
+                            "message": "The :attribute field must match the format H:i."
+                        }
+                    ]
+                },
+                "meal_type": {
+                    "attribute": "meal type",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "enum",
+                            "params": [
+                                "breakfast",
+                                "lunch",
+                                "dinner",
+                                "snack"
+                            ],
+                            "message": "The selected :attribute is invalid."
+                        }
+                    ]
+                },
+                "notes": {
+                    "attribute": "notes",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000 characters."
+                        }
+                    ]
+                },
+                "items": {
+                    "attribute": "items",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "array",
+                            "message": "The :attribute field must be an array."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "1"
+                            ],
+                            "message": "The :attribute field must have at least 1 items."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "40"
+                            ],
+                            "message": "The :attribute field must not have more than 40 items."
+                        }
+                    ]
+                },
+                "items.*.name": {
+                    "attribute": "food name",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "191"
+                            ],
+                            "message": "The :attribute field must not be greater than 191 characters."
+                        }
+                    ]
+                },
+                "items.*.basis": {
+                    "attribute": "entry mode",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "in",
+                            "params": [
+                                "absolute",
+                                "per_100g"
+                            ],
+                            "message": "The selected :attribute is invalid."
+                        }
+                    ]
+                },
+                "items.*.kcal": {
+                    "attribute": "calories",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "20000"
+                            ],
+                            "message": "The :attribute field must not be greater than 20000."
+                        }
+                    ]
+                },
+                "items.*.protein": {
+                    "attribute": "protein",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000."
+                        }
+                    ]
+                },
+                "items.*.carbs": {
+                    "attribute": "carbs",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000."
+                        }
+                    ]
+                },
+                "items.*.fat": {
+                    "attribute": "fat",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000."
+                        }
+                    ]
+                },
+                "items.*.grams": {
+                    "attribute": "portion",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "10000"
+                            ],
+                            "message": "The :attribute field must not be greater than 10000."
+                        }
+                    ]
+                },
+                "items.*.kcal_per_100g": {
+                    "attribute": "calories per 100 g",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "900"
+                            ],
+                            "message": "The :attribute field must not be greater than 900."
+                        }
+                    ]
+                },
+                "items.*.protein_per_100g": {
+                    "attribute": "protein per 100 g",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "100"
+                            ],
+                            "message": "The :attribute field must not be greater than 100."
+                        }
+                    ]
+                },
+                "items.*.carbs_per_100g": {
+                    "attribute": "carbs per 100 g",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "100"
+                            ],
+                            "message": "The :attribute field must not be greater than 100."
+                        }
+                    ]
+                },
+                "items.*.fat_per_100g": {
+                    "attribute": "fat per 100 g",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0"
+                            ],
+                            "message": "The :attribute field must be at least 0."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "100"
+                            ],
+                            "message": "The :attribute field must not be greater than 100."
+                        }
+                    ]
+                },
+                "items.*.food_product_id": {
+                    "attribute": "scanned product",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "32"
+                            ],
+                            "message": "The :attribute field must not be greater than 32 characters."
+                        },
+                        {
+                            "rule": "exists",
+                            "params": [
+                                "food_products",
+                                "barcode"
+                            ],
+                            "server_only": true
+                        }
+                    ]
+                },
+                "items.*.share_fraction": {
+                    "attribute": "share eaten",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "0.01"
+                            ],
+                            "message": "The :attribute field must be at least 0.01."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "1"
+                            ],
+                            "message": "The :attribute field must not be greater than 1."
+                        }
+                    ]
+                }
+            }
+        },
+        "PasswordUpdateRequest": {
+            "fields": {
+                "current_password": {
+                    "attribute": "current password",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "Enter your current password."
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "current_password",
+                            "server_only": true
+                        }
+                    ]
+                },
+                "password": {
+                    "attribute": "password",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "Choose a new password."
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "confirmed",
+                            "message": "The new password and its confirmation do not match."
+                        },
+                        {
+                            "rule": "password",
+                            "server_only": true
+                        }
+                    ]
+                }
+            }
+        },
+        "ProfileRequest": {
+            "fields": {
+                "date_of_birth": {
+                    "attribute": "date of birth",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "date",
+                            "server_only": true
+                        },
+                        {
+                            "rule": "after_or_equal",
+                            "params": [
+                                "1900-01-01"
+                            ],
+                            "server_only": true
+                        },
+                        {
+                            "rule": "before_or_equal",
+                            "params": [
+                                "today"
+                            ],
+                            "server_only": true
+                        }
+                    ]
+                },
+                "sex": {
+                    "attribute": "sex",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "40"
+                            ],
+                            "message": "The :attribute field must not be greater than 40 characters."
+                        }
+                    ]
+                },
+                "height_cm": {
+                    "attribute": "height cm",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "Height should be a number of centimetres, like 160 or 160,5."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "50"
+                            ],
+                            "message": "That looks like metres. Height goes in centimetres — 160, not 1,6."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "260"
+                            ],
+                            "message": "That is taller than anyone has ever been. Height goes in centimetres."
+                        }
+                    ]
+                },
+                "ethnicity": {
+                    "attribute": "ethnicity",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "120"
+                            ],
+                            "message": "The :attribute field must not be greater than 120 characters."
+                        }
+                    ]
+                },
+                "country": {
+                    "attribute": "country",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "120"
+                            ],
+                            "message": "The :attribute field must not be greater than 120 characters."
+                        }
+                    ]
+                },
+                "goal": {
+                    "attribute": "goal",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "60"
+                            ],
+                            "message": "The :attribute field must not be greater than 60 characters."
+                        }
+                    ]
+                },
+                "target_weight_kg": {
+                    "attribute": "target weight kg",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "A target weight should be a number of kilos, like 54 or 54,5."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "20"
+                            ],
+                            "message": "The :attribute field must be at least 20."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "400"
+                            ],
+                            "message": "The :attribute field must not be greater than 400."
+                        }
+                    ]
+                },
+                "goal_notes": {
+                    "attribute": "goal notes",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "500"
+                            ],
+                            "message": "The :attribute field must not be greater than 500 characters."
+                        }
+                    ]
+                },
+                "dietary_preferences": {
+                    "attribute": "dietary preferences",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "1000"
+                            ],
+                            "message": "The :attribute field must not be greater than 1000 characters."
+                        }
+                    ]
+                },
+                "allergies_intolerances": {
+                    "attribute": "allergies intolerances",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "1000"
+                            ],
+                            "message": "The :attribute field must not be greater than 1000 characters."
+                        }
+                    ]
+                },
+                "smoking": {
+                    "attribute": "smoking",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "60"
+                            ],
+                            "message": "The :attribute field must not be greater than 60 characters."
+                        }
+                    ]
+                },
+                "alcohol": {
+                    "attribute": "alcohol",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "200"
+                            ],
+                            "message": "The :attribute field must not be greater than 200 characters."
+                        }
+                    ]
+                },
+                "sun_exposure": {
+                    "attribute": "sun exposure",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "40"
+                            ],
+                            "message": "The :attribute field must not be greater than 40 characters."
+                        }
+                    ]
+                },
+                "activity_context": {
+                    "attribute": "activity context",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "500"
+                            ],
+                            "message": "The :attribute field must not be greater than 500 characters."
+                        }
+                    ]
+                },
+                "life_stage": {
+                    "attribute": "life stage",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "120"
+                            ],
+                            "message": "The :attribute field must not be greater than 120 characters."
+                        }
+                    ]
+                },
+                "health_notes": {
+                    "attribute": "health notes",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "2000"
+                            ],
+                            "message": "The :attribute field must not be greater than 2000 characters."
+                        }
+                    ]
+                }
+            }
+        },
+        "RelogRequest": {
+            "fields": {
+                "uuid": {
+                    "attribute": "uuid",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "uuid",
+                            "message": "The :attribute field must be a valid UUID."
+                        }
+                    ]
+                },
+                "date": {
+                    "attribute": "date",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "date_format",
+                            "params": [
+                                "Y-m-d"
+                            ],
+                            "message": "The :attribute field must match the format Y-m-d."
+                        }
+                    ]
+                },
+                "time": {
+                    "attribute": "time",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "date_format",
+                            "params": [
+                                "H:i"
+                            ],
+                            "message": "The :attribute field must match the format H:i."
+                        }
+                    ]
+                }
+            }
+        },
+        "SupplementIntakeRequest": {
+            "fields": {
+                "date": {
+                    "attribute": "date",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "date_format",
+                            "params": [
+                                "Y-m-d"
+                            ],
+                            "message": "The :attribute field must match the format Y-m-d."
+                        }
+                    ]
+                },
+                "taken": {
+                    "attribute": "taken",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "boolean",
+                            "message": "The :attribute field must be true or false."
+                        }
+                    ]
+                }
+            }
+        },
+        "SupplementLabelRequest": {
+            "fields": {
+                "client_id": {
+                    "attribute": "client id",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "uuid",
+                            "message": "The :attribute field must be a valid UUID."
+                        }
+                    ]
+                },
+                "idempotency_key": {
+                    "attribute": "idempotency key",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "8"
+                            ],
+                            "message": "The :attribute field must be at least 8 characters."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "128"
+                            ],
+                            "message": "The :attribute field must not be greater than 128 characters."
+                        }
+                    ]
+                },
+                "photo": {
+                    "attribute": "photo",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "server_only": true
+                        },
+                        {
+                            "rule": "file",
+                            "server_only": true
+                        },
+                        {
+                            "rule": "image",
+                            "server_only": true
+                        },
+                        {
+                            "rule": "mimes",
+                            "params": [
+                                "jpeg",
+                                "jpg",
+                                "png",
+                                "webp"
+                            ],
+                            "server_only": true
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "8192"
+                            ],
+                            "server_only": true
+                        }
+                    ]
+                }
+            }
+        },
+        "SupplementRequest": {
+            "fields": {
+                "name": {
+                    "attribute": "name",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "120"
+                            ],
+                            "message": "The :attribute field must not be greater than 120 characters."
+                        }
+                    ]
+                },
+                "brand": {
+                    "attribute": "brand",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "120"
+                            ],
+                            "message": "The :attribute field must not be greater than 120 characters."
+                        }
+                    ]
+                },
+                "serving_text": {
+                    "attribute": "serving text",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "120"
+                            ],
+                            "message": "The :attribute field must not be greater than 120 characters."
+                        }
+                    ]
+                },
+                "units_per_day": {
+                    "attribute": "units per day",
+                    "rules": [
+                        {
+                            "rule": "sometimes"
+                        },
+                        {
+                            "rule": "integer",
+                            "message": "The :attribute field must be an integer."
+                        },
+                        {
+                            "rule": "min",
+                            "params": [
+                                "1"
+                            ],
+                            "message": "The :attribute field must be at least 1."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "20"
+                            ],
+                            "message": "The :attribute field must not be greater than 20."
+                        }
+                    ]
+                },
+                "active": {
+                    "attribute": "active",
+                    "rules": [
+                        {
+                            "rule": "sometimes"
+                        },
+                        {
+                            "rule": "boolean",
+                            "message": "The :attribute field must be true or false."
+                        }
+                    ]
+                },
+                "client_id": {
+                    "attribute": "client id",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "uuid",
+                            "message": "The :attribute field must be a valid UUID."
+                        }
+                    ]
+                },
+                "notes": {
+                    "attribute": "notes",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "500"
+                            ],
+                            "message": "The :attribute field must not be greater than 500 characters."
+                        }
+                    ]
+                },
+                "nutrients": {
+                    "attribute": "nutrients",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "array",
+                            "message": "The :attribute field must be an array."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "60"
+                            ],
+                            "message": "The :attribute field must not have more than 60 items."
+                        }
+                    ]
+                },
+                "nutrients.*.nutrient": {
+                    "attribute": "nutrients.:index.nutrient",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "120"
+                            ],
+                            "message": "The :attribute field must not be greater than 120 characters."
+                        }
+                    ]
+                },
+                "nutrients.*.amount": {
+                    "attribute": "nutrients.:index.amount",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "numeric",
+                            "message": "The :attribute field must be a number."
+                        }
+                    ]
+                },
+                "nutrients.*.unit": {
+                    "attribute": "nutrients.:index.unit",
+                    "rules": [
+                        {
+                            "rule": "nullable"
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "max",
+                            "params": [
+                                "32"
+                            ],
+                            "message": "The :attribute field must not be greater than 32 characters."
+                        }
+                    ]
+                }
+            }
+        },
+        "Login": {
+            "fields": {
+                "email": {
+                    "attribute": "email",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        },
+                        {
+                            "rule": "email",
+                            "server_only": true
+                        }
+                    ]
+                },
+                "password": {
+                    "attribute": "password",
+                    "rules": [
+                        {
+                            "rule": "required",
+                            "message": "The :attribute field is required."
+                        },
+                        {
+                            "rule": "string",
+                            "message": "The :attribute field must be a string."
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,246 @@
+# =============================================================================
+# Health Tracker — throwaway CI stack (one per git worktree)
+# =============================================================================
+# This file exists so two or three workers can run the suite AT THE SAME TIME
+# without queueing behind each other and without going anywhere near the
+# production stack that `docker-compose.yml` describes.
+#
+# It is never `up`-ed by hand. `scripts/ci.sh` drives it, because the parts that
+# make concurrency safe are the parts a human forgets:
+#
+#   * a compose PROJECT NAME derived from the branch (`-p ht-ci-<branch>`), which
+#     is what gives each stack its own containers, its own bridge network and its
+#     own volumes. Two stacks with the same project name are ONE stack, and the
+#     second worker's `down -v` takes the first worker's database with it.
+#   * `-f docker-compose.ci.yml` ONLY. Compose merges `docker-compose.yml` +
+#     `docker-compose.override.yml` by default, and that file describes
+#     PRODUCTION: named persistent volumes, a published port on 127.0.0.1:3083,
+#     horizon, the scheduler. Inheriting any of it here would mean a CI run
+#     fighting the live site for a port and, far worse, a `down -v` reachable
+#     from a worktree that could delete `health-tracker_health-tracker-pgdata`.
+#
+# So: no `name:` key in this file. There is deliberately no default project name
+# to fall back on, and ci.sh always passes `-p`.
+#
+# WHAT IS NOT HERE, AND WHY
+#   nginx/web  — the suite never speaks HTTP over a socket. Laravel's test client
+#                dispatches requests in-process, so a web sidecar would be a
+#                container that exists only to idle.
+#   horizon    — `phpunit.xml` pins QUEUE_CONNECTION=sync. Jobs run inline inside
+#                the test process; a queue worker would have nothing to consume.
+#   scheduler  — CI has no clock work. `schedule:work` in a CI stack is a process
+#                that wakes every minute to do nothing, times two stacks.
+#   redis      — `phpunit.xml` pins CACHE_STORE=array and SESSION_DRIVER=array,
+#                and no test connects to Redis. It is still defined below under
+#                the `redis` profile so a future test that DOES need it is one
+#                flag away rather than a compose-file edit.
+#
+# Usage (all of it via ci.sh — this is what it runs):
+#   docker compose -p ht-ci-feat-parallel-ci -f docker-compose.ci.yml up -d
+#   docker compose -p ht-ci-feat-parallel-ci -f docker-compose.ci.yml exec app php artisan test
+#   docker compose -p ht-ci-feat-parallel-ci -f docker-compose.ci.yml down -v
+# =============================================================================
+
+services:
+  # --- The application container ------------------------------------------
+  # Same Dockerfile and the same uid:gid as production, because a test run that
+  # passes as a different user than the one that serves the site proves less
+  # than it appears to. It is the uid:gid that owns the checkout, so the
+  # `vendor/` composer writes into the bind mount is owned by that same user —
+  # not root.
+  #
+  # THE IMAGE TAG IS `:ci`, NOT `:latest`, AND THAT IS THE WHOLE POINT.
+  # `docker-compose.yml` runs production off `health-tracker/app:latest`.
+  # Building `:latest` from a worktree would silently re-point the tag the live
+  # containers were created from, so the next `docker compose up -d` on the main
+  # tree would pick up a worktree's image. A separate tag makes that impossible.
+  # The Dockerfile is byte-identical, so the build is a layer-cache hit and costs
+  # about a second.
+  app:
+    build:
+      context: ./docker/app
+      args:
+        APP_UID: '990'
+        APP_GID: '983'
+    image: '${CI_APP_IMAGE:-health-tracker/app:ci}'
+    user: '990:983'
+    # A parked container, not php-fpm. Everything happens through
+    # `docker compose exec`, and an idle fpm master plus its children is memory
+    # spent to answer requests that never come. `tail -f`, not `sleep infinity`:
+    # this is busybox, whose `sleep` wants a number.
+    command: ['tail', '-f', '/dev/null']
+    working_dir: /var/www/html
+    environment:
+      # The worktree has no `.env`, and Laravel would fall back to it if it did.
+      # ci.sh writes a `.env.testing` pointing at the service names below; these
+      # are here as a belt-and-braces default for a bare `exec php artisan`.
+      APP_ENV: testing
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: '5432'
+      DB_DATABASE: health_tracker_test
+      DB_USERNAME: health_tracker
+      DB_PASSWORD: ci-not-a-secret
+      REDIS_HOST: redis
+    volumes:
+      # The WORKTREE, not the main tree. Relative to this compose file, so the
+      # stack always mounts the checkout it was launched from.
+      - './:/var/www/html'
+      # Shared, EXTERNAL composer cache — see the `volumes:` block at the bottom
+      # for why external matters.
+      - 'ht-ci-composer-cache:/home/app/.composer'
+    networks:
+      - ci
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # a modest host may already be carrying other stacks alongside this one.
+    # A cap turns "the suite ate the VPS" into "the suite got OOM-killed", which
+    # is a failure you can read in the output instead of one you diagnose from
+    # the other applications falling over.
+    mem_limit: 768m
+    memswap_limit: 768m
+
+  # --- Postgres 18, in RAM, tuned for a database nobody will miss ----------
+  # Same major version as production: the schema is not portable and is not
+  # meant to be (stored generated columns using AT TIME ZONE, jsonb, enum CHECK
+  # constraints), so testing against anything else tests a different schema.
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: health_tracker_test
+      POSTGRES_USER: health_tracker
+      POSTGRES_PASSWORD: ci-not-a-secret
+      # postgres:18 turns data checksums ON by default. They exist to catch a
+      # disk corrupting a page under you; this database lives in tmpfs and is
+      # destroyed at the end of the run, so the check is pure overhead on every
+      # page read. NB the flag takes no argument in 18 — `--data-checksums=off`
+      # is not a thing and initdb exits 1 on it.
+      POSTGRES_INITDB_ARGS: '--no-data-checksums'
+    # POSTGRES_DB above means the test database exists the moment the container
+    # is healthy — no `CREATE DATABASE` step, and nothing to get wrong twice.
+    # (ci.sh still verifies it, because a reused warm stack could have had it
+    # dropped by hand.)
+    command:
+      - 'postgres'
+      # This database lives in tmpfs and is destroyed on `down -v`. Durability
+      # buys nothing here and costs an fsync on every commit — and the suite is
+      # ~58 classes each migrating or transacting a fresh schema, so the fsyncs
+      # dominate. Turning them off is the single biggest win in this file. NONE
+      # of these settings appear in the production compose file, deliberately.
+      - '-c'
+      - 'fsync=off'
+      - '-c'
+      - 'synchronous_commit=off'
+      - '-c'
+      - 'full_page_writes=off'
+      # Small: two of these stacks may be up at once and the box has ~7.6 GB.
+      - '-c'
+      - 'shared_buffers=32MB'
+      - '-c'
+      - 'max_connections=30'
+      # Nothing reads these logs and writing them costs tmpfs.
+      - '-c'
+      - 'logging_collector=off'
+    tmpfs:
+      # postgres:18 moved PGDATA to /var/lib/postgresql/18/docker and declares
+      # the VOLUME one level up, so the tmpfs goes on the PARENT — the same trap
+      # the production file documents for its named volume. mode=0777 lets the
+      # entrypoint (root, before it drops to the postgres user) initdb into it.
+      #
+      # `size=` is a CAP, not an allocation: an empty test database occupies a
+      # few tens of MB of RAM, not 384. Override with CI_PG_TMPFS_SIZE if a
+      # branch ever seeds something large.
+      - '/var/lib/postgresql:size=${CI_PG_TMPFS_SIZE:-384m},mode=0777'
+    networks:
+      - ci
+    healthcheck:
+      # `-h /var/run/postgresql` pins the check to the unix socket. Without it,
+      # pg_isready can answer "accepting connections" against the temporary
+      # server initdb runs during bootstrap, and the stack is declared healthy a
+      # second before the real one is listening.
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U health_tracker -d health_tracker_test -h /var/run/postgresql',
+        ]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    mem_limit: 384m
+    memswap_limit: 384m
+
+  # --- Redis (opt-in) -------------------------------------------------------
+  # Not started by default: nothing in the suite needs it today (see the header).
+  # If a test ever does, `scripts/ci.sh --redis` starts it, and `.env.testing`
+  # already points REDIS_HOST at this service name.
+  redis:
+    image: redis:alpine
+    profiles: ['redis']
+    # No appendonly and no volume — a cache that outlives one CI run is a cache
+    # that leaks state into the next one.
+    command: ['redis-server', '--save', '', '--appendonly', 'no']
+    networks:
+      - ci
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 3s
+      timeout: 5s
+      retries: 10
+    mem_limit: 96m
+    memswap_limit: 96m
+
+  # --- Asset build (opt-in, one-shot) --------------------------------------
+  # THE SUITE DOES NOT NEED THIS. `Tests\TestCase::setUp()` calls
+  # `withoutVite()`, precisely so a clean checkout can run green without an npm
+  # install first — which is what makes a fresh worktree cheap. `public/build`
+  # matters at DEPLOY time, on the main tree, and nowhere else.
+  #
+  # It is here for the one case that does come up: a branch that changes the
+  # front end and wants to know the bundle still builds before opening the PR.
+  #
+  #   scripts/ci.sh --assets-only
+  #
+  # node_modules lands in the worktree (102 MB, gitignored) and dies with it.
+  assets:
+    image: node:24-alpine
+    profiles: ['assets']
+    user: '990:983'
+    working_dir: /var/www/html
+    environment:
+      # the app uid has no home inside a stock node image.
+      HOME: /tmp
+      npm_config_cache: /tmp/.npm
+    volumes:
+      - './:/var/www/html'
+    networks:
+      - ci
+    command: ['sh', '-c', 'npm ci --no-audit --fund=false && npm run build']
+    mem_limit: 1g
+    memswap_limit: 1g
+
+networks:
+  # Named `ci` and left to compose to prefix with the project name, so the two
+  # stacks get `ht-ci-<branch-a>_ci` and `ht-ci-<branch-b>_ci` — separate bridge
+  # networks, separate DNS. `postgres` resolves to a different container in each,
+  # which is what lets both stacks use the identical `.env.testing`.
+  ci:
+    driver: bridge
+
+volumes:
+  # `external: true` is load-bearing. This is the ONE thing CI stacks share, and
+  # it is shared on purpose: worktrees do not share `vendor/`, so every new
+  # worktree pays a `composer install`. Against a warm cache that is ~15s of
+  # unpacking instead of a few minutes of downloading.
+  #
+  # External because `down -v` removes every volume DECLARED in the file, and a
+  # worker tearing down their stack must not delete the cache another worker is
+  # mid-install against. External volumes are outside compose's lifecycle, so
+  # `down -v` cannot touch it. ci.sh creates it on first use.
+  #
+  #   docker volume create ht-ci-composer-cache      # what ci.sh does
+  #   docker volume rm     ht-ci-composer-cache      # if it ever needs purging
+  ht-ci-composer-cache:
+    external: true
+    name: ht-ci-composer-cache

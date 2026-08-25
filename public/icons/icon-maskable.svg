@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Health Tracker">
+  <title>Health Tracker</title>
+  <rect width="512" height="512" fill="#0d9488"/>
+  <circle cx="256" cy="256" r="139.78" fill="#fafaf9"/>
+  <path d="M141.38 256 L208.48 256 L235.03 197.29 L264.39 317.5 L292.34 256 L370.62 256" fill="none" stroke="#0d9488" stroke-width="24.88" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

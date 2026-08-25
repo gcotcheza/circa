@@ -1,0 +1,817 @@
+@import 'tailwindcss';
+
+/*
+ * Air Datepicker's own stylesheet, from node_modules — BUNDLED, never a CDN,
+ * because this app is installed to a home screen and is expected to open with
+ * no network at all. It is imported here rather than from the component so it
+ * lands in the one stylesheet the document already preloads, instead of being
+ * injected by JavaScript on first render.
+ *
+ * It is almost entirely layout: every colour it draws comes from a `--adp-*`
+ * custom property, and all 76 of those are declared in one block of its own.
+ * The block at the bottom of THIS file is where they are repointed at this
+ * app's palette, in both themes.
+ */
+@import 'air-datepicker/air-datepicker.css';
+
+@source '../../storage/framework/views/*.php';
+@source '../views/**/*.blade.php';
+@source '../js/**/*.vue';
+@source '../js/**/*.js';
+
+/* Prose, not markup — an English word here can collide with a utility name
+   (e.g. "ordinal") and get generated for no template that uses it. */
+@source not '../../docs/**';
+
+@theme {
+    /*
+     * System fonts, deliberately. The only client is an iPhone, where this
+     * resolves to SF Pro — already on the device, rendered by the OS, zero
+     * bytes over the wire and zero layout shift. A webfont would cost a
+     * round-trip on every cold launch to look slightly less native.
+     */
+    --font-sans: -apple-system, BlinkMacSystemFont, ui-sans-serif, system-ui, 'Segoe UI', Roboto, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji';
+}
+
+/*
+ * Dark mode follows the system, with no toggle. The phone already has that
+ * switch, it is on a schedule the user set, and a second one in here would only
+ * be a way for the two to disagree.
+ */
+
+/* ==========================================================================
+ * THE STRESS BAND PALETTE — the only place these colours are written down
+ * ==========================================================================
+ * Four bands, two themes, and every fill, every band-coloured word and the two
+ * theme-varying numbers that go with them. Nothing in resources/js repeats a
+ * hex: lib/stress.js maps a band key to the NAME of one of these properties and
+ * hands that name to an inline style, so the browser resolves the theme at paint
+ * time and no component, no SVG attribute and no Tailwind safelist ever has to
+ * know which theme is on.
+ *
+ * They are declared unlayered and on purpose: an unlayered declaration beats
+ * anything in @layer, so a future utility or a Tailwind theme variable of a
+ * similar name cannot quietly shadow the palette.
+ *
+ * --------------------------------------------------------------------------
+ * WHY PASTELS, AND WHAT THEY COST
+ *
+ * The saturated ramp these replace (crimson / orange / green / cyan) was
+ * correct and unpleasant: 168 heatmap cells of it is a hazard sign, and the
+ * feature is meant to be looked at every morning by someone who is already
+ * wondering whether they slept badly. These four are the palette of the
+ * commercial app being replaced, which the user read every day for two years
+ * without flinching.
+ *
+ * Measured rather than eyeballed, in OKLab, against the surfaces they are
+ * actually drawn on (white, and stone-900 in dark):
+ *
+ *   worst ADJACENT pair, normal vision   light dE 19.1, dark dE 17.2
+ *                                        (the old ramp's was 15.5 — better)
+ *   worst pair of ANY two bands          light dE 13.1, dark dE 11.0
+ *                                        (Pay attention / Great, two apart)
+ *   fill against its surface             light 1.50:1 (Pay attention) to
+ *                                        2.68:1 (Overload)
+ *                                        dark  3.63:1 (Overload) to
+ *                                        6.97:1 (Pay attention)
+ *   worst pair, protanopia               light dE 6.5, dark dE 5.7
+ *   worst pair, deuteranopia             light dE 7.7, dark dE 7.1
+ *
+ * Two of those are worse than what they replace and the honesty about it lives
+ * in lib/stress.js, next to the code that hands the colours out.
+ *
+ * --------------------------------------------------------------------------
+ * HOW THE DARK SET WAS DERIVED
+ *
+ * Not picked. Each dark fill is its light counterpart with the SAME OKLCH hue,
+ * lightness dropped by a flat 0.15 and chroma multiplied by 0.80 — a pastel put
+ * in shade rather than a second palette that happens to rhyme. The flat drop is
+ * what keeps the light ramp's relative lightness intact; compressing the range
+ * to even out the contrast figures was tried and collapsed the worst adjacent
+ * pair from dE 17.9 to 12.2, which is the wrong trade for a scale whose whole
+ * job is to be told apart.
+ *
+ * The `ink` set is different in kind. It colours a WORD ("Pay attention" beside
+ * the score), and a pastel word on white is unreadable, so ink keeps the band's
+ * hue and takes whatever lightness clears 4.5:1 on its surface — one lightness
+ * for all four in each theme, so the four labels carry equal typographic weight.
+ * ========================================================================== */
+:root {
+    /* Fills: heatmap cells, chart points and band fields, swatches. */
+    --stress-overload: #ee7d75; /* soft coral   */
+    --stress-attention: #f1ce95; /* soft sand    */
+    --stress-normal: #82baeb; /* soft sky     */
+    --stress-great: #a8d157; /* soft lime    */
+
+    /*
+     * The two NON-verdicts, as a neutral ramp. These are not bands and must
+     * never look like one: no chroma at all, so a pastel is always the thing
+     * with colour in it.
+     *
+     *   missing    the Watch was off. Nothing was measured. This used to be a
+     *              bare outline on a white card, which made the holes in the
+     *              week the BRIGHTEST thing in the grid — the eye went to the
+     *              gaps before the data. It is now the quietest thing in the
+     *              grid instead: 1.26:1 on white against 1.50:1 for the palest
+     *              band, so it recedes under every colour on the card.
+     *   unranked   a reading at an hour with no established shape yet.
+     *              Something WAS measured, so it has to be visible — 1.99:1 —
+     *              and it has to be clearly a step up from `missing`, or the
+     *              two states that mean opposite things look identical. The old
+     *              45%-of-stone-300 wash came out at 1.19:1, which is exactly
+     *              where `missing` now sits; that collision is why this one
+     *              moved rather than staying put.
+     *
+     * An hour that HAS NOT HAPPENED YET is none of the above and gets no cell
+     * at all — see StressHeatmap.vue. It is not a gap in the data.
+     */
+    --stress-missing: #e7e5e4; /* stone-200, 1.26:1 on white */
+    --stress-unranked: #bbb7b3; /*             1.99:1 on white */
+
+    /* A band key the client does not recognise. Should never render; if the
+       server ever adds a fifth band this is what it looks like until we do. */
+    --stress-unknown: #a8a29e; /* stone-400    */
+
+    /* Ink: the same four hues at 4.90–5.43:1 on white, 4.69–5.20:1 on stone-50. */
+    --stress-ink-overload: #b54440;
+    --stress-ink-attention: #8a682d;
+    --stress-ink-normal: #3a74a3;
+    --stress-ink-great: #5c7b02;
+
+    /*
+     * The band fields behind the week chart are the only y-axis it has room
+     * for, so they have to be felt and not seen. A pastel needs more of itself
+     * than a crimson did to land in the same place: 0.10 of the old ramp and
+     * 0.22 of this one are about the same wash on white.
+     */
+    --stress-field-opacity: 0.22;
+
+    /*
+     * A hairline inside the small band swatches. A 10 px square of #f1ce95 on
+     * white is 1.50:1 — findable once you know it is there, which is not the
+     * same as findable. Neutral rather than per-band so it reads as an edge
+     * rather than as a fifth colour.
+     */
+    --stress-swatch-ring: rgb(0 0 0 / 0.14);
+
+    /* ======================================================================
+     * THE BODY CARD — one colour per series, and the wash under the curve
+     * ======================================================================
+     * Components/WeightChart.vue names these properties; it holds no hex, for
+     * the same reason lib/stress.js holds none.
+     *
+     * WEIGHT STAYS VIOLET. Every card on the trends page owns an accent —
+     * energy is orange, steps are blue, weight has been violet since step 3 —
+     * and that is what lets the page be scanned without reading the headings.
+     * The other two are the same colour temperature deliberately kept quieter:
+     * they are the same card wearing a different series, not three charts.
+     *
+     * Each value is picked for the surface it is drawn on. Light theme is a
+     * 2 px stroke and small rings on white; dark is the same on stone-900,
+     * where a saturated mid-tone goes muddy and needs lifting instead.
+     */
+    --body-weight: #7c5cf5; /* violet, ~5.5:1 on white  */
+    --body-fat: #b8762e; /* amber-bronze             */
+    --body-muscle: #0e8f83; /* deep teal                */
+
+    /*
+     * The gradient under the curve, as a group opacity rather than as three
+     * more colours — same trick as --stress-field-opacity, and the same reason:
+     * the number that has to differ between themes is the STRENGTH of the wash,
+     * not its hue. 0.16 on white is a tint you feel and do not look at.
+     */
+    --body-wash-opacity: 0.16;
+
+    /*
+     * And the thin line that joins the raw weigh-ins, drawn UNDER the trend.
+     *
+     * Same accent, held down to texture. At full strength a 1.1-unit stroke is
+     * a second trend line and the card is then making two claims of equal
+     * weight; the whole point of the thin one is that the eye reads the bold
+     * one first and finds the readings' own path behind it. 0.45 on white puts
+     * it at about 1.9:1 against the page, against the trend's 5.5:1.
+     *
+     * Also multiplied into the dashed bridge (SVG group opacity nests), so the
+     * thin line's guessed stretches come out fainter than the trend's without
+     * a fourth number to keep in step.
+     */
+    --body-raw-opacity: 0.45;
+
+    /* ======================================================================
+     * THE BALANCE METER — the three colours the day card's headline wears
+     * ======================================================================
+     * Components/BalanceCard.vue draws a meter centred on break-even, on which
+     * the balance is a bar growing out of the marked zero, and lib/balance.js
+     * chooses which of these three it is painted in. Same arrangement as the
+     * stress bands: the module names a property and never holds a hex, so the
+     * browser resolves the theme at paint time and no component asks which one
+     * is on.
+     *
+     * They are DIRECTIONS, not verdicts. Warm is over your burn, cool is under
+     * it, grey is a band that straddles maintenance and cannot be called
+     * either. Nothing here is praise or a warning — the day card is neutral to
+     * goals, and goal framing belongs to the reports.
+     *
+     * The hues are the ones the two-bar card already used, one step apart from
+     * the TEXT they sit beside: the word "Surplus" is orange-600 because 14 px
+     * of it needs 4.5:1, and the bar is orange-500 because a solid block of
+     * orange-600 on white is a traffic light. Same argument in reverse in the
+     * dark, where a mid-tone fill on stone-900 goes muddy and both lift.
+     *
+     * The glow is a drop-shadow of the same hue and it is the only ornament on
+     * the card. It exists because the bar has a FADED tip — a soft end against a
+     * white surface loses its edge entirely, and a breath of the same colour
+     * underneath is what keeps a 29 kcal surplus visible as a thing.
+     */
+    --balance-surplus: #f97316; /* orange-500 */
+    --balance-surplus-glow: rgb(249 115 22 / 0.32);
+    --balance-deficit: #0d9488; /* teal-600   */
+    --balance-deficit-glow: rgb(13 148 136 / 0.3);
+    --balance-even: #a8a29e; /* stone-400  */
+    --balance-even-glow: rgb(168 162 158 / 0.28);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --stress-overload: #ae5953;
+        --stress-attention: #baa074;
+        --stress-normal: #608ab0;
+        --stress-great: #7f9e42;
+
+        /* Same job on stone-900: 1.36:1 and 2.20:1, both well under the
+           dimmest dark band (Overload, 3.63:1). */
+        --stress-missing: #35312e;
+        --stress-unranked: #56504c;
+
+        /* stone-400 reads as grey on both surfaces, so it does not move. */
+
+        /* 7.77–8.39:1 on stone-900. */
+        --stress-ink-overload: #f2938c;
+        --stress-ink-attention: #c8ad80;
+        --stress-ink-normal: #89b7de;
+        --stress-ink-great: #9ebf60;
+
+        /* A little more, because the dark fills are already deepened. */
+        --stress-field-opacity: 0.28;
+
+        --stress-swatch-ring: rgb(255 255 255 / 0.14);
+
+        /*
+         * The body card, on stone-900 — the theme this app is actually read in.
+         * Lifted rather than deepened: the light values are 5-6:1 against white
+         * and would be 2:1 here, which is a line you have to hunt for. These are
+         * 6.0-7.4:1 on stone-900, so a 2 px stroke reads at arm's length and a
+         * 3 px ring is still a ring and not a smudge.
+         */
+        --body-weight: #a78bfa;
+        --body-fat: #d7a05a;
+        --body-muscle: #47bcae;
+
+        /*
+         * And the wash goes UP, not down. The same 0.16 over a near-black card
+         * is nothing at all; a gradient has to hold more of itself to be felt
+         * against stone-900 than against white.
+         */
+        --body-wash-opacity: 0.3;
+
+        /*
+         * The thin line goes the other way, and this is the theme it was tuned
+         * in. A pale stroke on near-black carries further than a dark one on
+         * white, so 0.45 here is a second line you keep looking at; 0.38 lands
+         * it at 2.0:1 on stone-900 — the same felt weight the light theme gets
+         * from a larger number, which is the point of having two of them.
+         */
+        --body-raw-opacity: 0.38;
+
+        /*
+         * The balance track on stone-900, which is the theme this app is read
+         * in. Both fills lift a step for the same reason the body card's do,
+         * and the glows roughly double: a coloured shadow on a near-black
+         * surface is the difference between a block that sits on the card and
+         * one that is lit from behind, and at 0.3 it is not there at all.
+         */
+        --balance-surplus: #fb923c; /* orange-400 */
+        --balance-surplus-glow: rgb(251 146 60 / 0.5);
+        --balance-deficit: #2dd4bf; /* teal-400   */
+        --balance-deficit-glow: rgb(45 212 191 / 0.45);
+        --balance-even: #78716c; /* stone-500  */
+        --balance-even-glow: rgb(168 162 158 / 0.35);
+    }
+}
+
+@layer base {
+    html {
+        /* Stop iOS Safari inflating font sizes in landscape. */
+        -webkit-text-size-adjust: 100%;
+        /* The rubber-band area behind the sticky header, in both themes. */
+        background-color: var(--color-stone-50);
+    }
+
+    @media (prefers-color-scheme: dark) {
+        html {
+            background-color: var(--color-stone-950);
+        }
+    }
+
+    /* Numbers that change (kcal, steps, weight) must not reflow the layout as
+       they tick, so everything numeric is tabular. */
+    .tnum {
+        font-variant-numeric: tabular-nums;
+    }
+
+    /*
+     * ---------------------------------------------------------------------
+     * THE TIME FIELD THAT WOULD NOT STAY IN ITS COLUMN
+     *
+     * The Time/Meal row of the meal sheet drew the Time input's rounded
+     * border about a third of the way into the Meal column, on iPhone, in
+     * both themes — while the two fields themselves sat correctly in their
+     * halves. Two rounds of layout fixes did not touch it, because the box
+     * that overflows is not a box any of them could reach:
+     *
+     *   `grid-cols-2`  sized the TRACKS at half each. Correct, and it is why
+     *                  the fields look right. Says nothing about their
+     *                  contents.
+     *   `min-w-0`      on the grid CELL cleared `min-width: auto`, which is
+     *                  what a grid item gets by default. Also correct, and
+     *                  also not this.
+     *
+     * What is left is the INPUT itself. WebKit themes `input[type=time]` as a
+     * native control, and a themed control carries a UA `min-width` derived
+     * from its shadow tree — the `::-webkit-datetime-edit` box with an
+     * hour field, a separator, a minute field and the affordance beside them,
+     * all sized off the inherited 16 px font. The used width of a box is
+     * `clamp(specified, min-width, max-width)` with min-width winning outright,
+     * so `w-full` (and `max-w-full`, had anyone tried it) is simply raised back
+     * to that minimum. The input's BORDER BOX therefore ends up wider than the
+     * 175 px track, and the border is what you can see.
+     *
+     * Only an author `min-width` beats a UA one, so that is what this is. It
+     * lives here rather than as a utility on the three inputs because the
+     * shadow pseudo-elements cannot be reached by a class at all, and because
+     * the next time field somebody adds would otherwise arrive with the bug
+     * already in it.
+     *
+     * `appearance: none` is the same statement one level up: stop theming the
+     * control, and the theme's minimum goes with it. It does not affect the
+     * tap — iOS still opens its native wheel — only the box the page draws.
+     * ---------------------------------------------------------------------
+     */
+    input[type='time'],
+    input[type='date'],
+    input[type='datetime-local'] {
+        appearance: none;
+        -webkit-appearance: none;
+        min-width: 0;
+    }
+
+    input[type='time']::-webkit-datetime-edit,
+    input[type='date']::-webkit-datetime-edit,
+    input[type='datetime-local']::-webkit-datetime-edit {
+        min-width: 0;
+        padding: 0;
+    }
+
+    input[type='time']::-webkit-date-and-time-value,
+    input[type='date']::-webkit-date-and-time-value,
+    input[type='datetime-local']::-webkit-date-and-time-value {
+        min-width: 0;
+        margin: 0;
+        text-align: left;
+    }
+}
+
+/* ==========================================================================
+ * AIR DATEPICKER, IN THIS APP'S CLOTHES
+ * ==========================================================================
+ * The calendar behind Components/AirDate.vue. Its stylesheet is imported at the
+ * top of this file and draws almost no colour of its own: everything visible is
+ * a `--adp-*` custom property, so dressing it is a list of assignments rather
+ * than a fight with a widget's opinions.
+ *
+ * The whole list is here, in one block, rather than scattered — a half-themed
+ * calendar is worse than an unthemed one, because the parts that ARE themed
+ * make the parts that are not look like a bug. The library's own defaults are
+ * a light-only sky-blue with an ORANGE weekday header, which would arrive on a
+ * stone-and-teal page looking like somebody else's control.
+ *
+ * These declarations are UNLAYERED and after the import, which is the whole
+ * cascade story: unlayered beats anything in `@layer`, and same-specificity
+ * later wins, so nothing Tailwind generates and nothing the library ships can
+ * shadow them.
+ *
+ * WHAT IS NOT SET HERE, AND WHY
+ *   z-index      The library's 100 (panel) and 99 (backdrop) already clear the
+ *                app's highest — the camera sheets at 60 — and the picker
+ *                genuinely is the topmost thing while it is open.
+ *   the pointer  The little arrow that ties a popover to its trigger. AirDate
+ *                always runs in mobile mode, where the panel is centred and the
+ *                pointer is `display: none`, so its hardcoded white background
+ *                is never painted and does not need a dark-mode answer.
+ *   weekends     Air Datepicker tags Saturday and Sunday but ships no styling
+ *                for them. Left alone: a week where two days are a different
+ *                colour reads as two of them being unavailable.
+ * ==========================================================================
+ */
+.air-datepicker {
+    /* The app's stack, so the calendar renders in SF Pro like everything else
+       rather than in the library's own near-miss system list. */
+    --adp-font-family: var(--font-sans);
+
+    --adp-background-color: var(--color-white);
+    --adp-border-color: var(--color-stone-200);
+    --adp-border-color-inner: var(--color-stone-200);
+
+    /* Matching the cards: `rounded-2xl` panels, `rounded-lg` things inside. */
+    --adp-border-radius: 1rem;
+    --adp-cell-border-radius: 0.5rem;
+    --adp-padding: 0.5rem;
+
+    --adp-color: var(--color-stone-800);
+    --adp-color-secondary: var(--color-stone-400);
+    --adp-color-other-month: var(--color-stone-300);
+    --adp-color-other-month-hover: var(--color-stone-400);
+    --adp-color-disabled: var(--color-stone-300);
+    --adp-color-disabled-in-range: var(--color-stone-300);
+    --adp-day-name-color: var(--color-stone-400);
+    --adp-day-name-color-hover: var(--color-stone-500);
+    --adp-nav-arrow-color: var(--color-stone-400);
+
+    /*
+     * Teal is the app's one accent, and it says two different things here:
+     * TODAY is teal TEXT (`--adp-color-current-date`) and the SELECTED day is a
+     * teal FILL. They have to be distinguishable, because on the day view they
+     * are usually the same square.
+     *
+     * The fill is teal-600 with white on it — the same pair as the Generate
+     * button in ReportForm and every other filled control in the app, rather
+     * than a lighter teal chosen to look nice against a calendar alone.
+     */
+    --adp-accent-color: var(--color-teal-700);
+    --adp-color-current-date: var(--color-teal-700);
+    --adp-cell-background-color-selected: var(--color-teal-600);
+    --adp-cell-background-color-selected-hover: var(--color-teal-700);
+    --adp-background-color-selected-other-month: var(--color-teal-600);
+    --adp-background-color-selected-other-month-focused: var(--color-teal-700);
+
+    --adp-background-color-hover: var(--color-stone-100);
+    --adp-background-color-active: var(--color-stone-200);
+
+    /*
+     * The panel is a fixed 320 px in mobile mode, which is the ENTIRE width of
+     * the narrowest iPhone still in service. `min()` keeps a gutter on those
+     * and changes nothing on anything wider.
+     */
+    --adp-mobile-width: min(20rem, calc(100vw - 3rem));
+    --adp-mobile-day-cell-height: 2.5rem;
+
+    /*
+     * In mobile mode the library drops the panel's border, so the only thing
+     * separating a white card from a white page is a shadow. The ring is a
+     * second box-shadow rather than a border because a border would change the
+     * panel's width, which is measured in `--adp-mobile-width` above.
+     */
+    box-shadow:
+        0 10px 30px -6px rgb(0 0 0 / 0.25),
+        0 0 0 1px var(--adp-border-color);
+}
+
+.air-datepicker-overlay {
+    /* The same backdrop the meal sheet and the review sheet use, so opening a
+       date picker feels like opening any other sheet in the app. */
+    --adp-overlay-background-color: color-mix(in oklab, var(--color-stone-900) 40%, transparent);
+
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+}
+
+@media (prefers-color-scheme: dark) {
+    .air-datepicker {
+        --adp-background-color: var(--color-stone-900);
+        --adp-border-color: var(--color-stone-700);
+        --adp-border-color-inner: var(--color-stone-800);
+
+        --adp-color: var(--color-stone-100);
+        --adp-color-secondary: var(--color-stone-500);
+        --adp-color-other-month: var(--color-stone-700);
+        --adp-color-other-month-hover: var(--color-stone-600);
+        --adp-color-disabled: var(--color-stone-700);
+        --adp-color-disabled-in-range: var(--color-stone-700);
+        --adp-day-name-color: var(--color-stone-500);
+        --adp-day-name-color-hover: var(--color-stone-400);
+        --adp-nav-arrow-color: var(--color-stone-500);
+
+        /*
+         * Today's date lightens to teal-400. teal-700 is legible on white and
+         * very nearly invisible on stone-900 — this is the one property where
+         * the light value is not merely dimmer in the dark, it is gone.
+         *
+         * The SELECTED fill stays teal-600, because the white text sitting on
+         * it does not change either.
+         */
+        --adp-accent-color: var(--color-teal-400);
+        --adp-color-current-date: var(--color-teal-400);
+        --adp-cell-background-color-selected: var(--color-teal-600);
+        --adp-cell-background-color-selected-hover: var(--color-teal-500);
+        --adp-background-color-selected-other-month: var(--color-teal-700);
+        --adp-background-color-selected-other-month-focused: var(--color-teal-600);
+
+        --adp-background-color-hover: var(--color-stone-800);
+        --adp-background-color-active: var(--color-stone-700);
+
+        /* A black shadow on a near-black page is nothing at all, so in the dark
+           the ring is the whole edge and it is drawn a step brighter. */
+        box-shadow:
+            0 10px 30px -6px rgb(0 0 0 / 0.6),
+            0 0 0 1px var(--color-stone-700);
+    }
+
+    .air-datepicker-overlay {
+        --adp-overlay-background-color: color-mix(in oklab, var(--color-stone-950) 55%, transparent);
+    }
+}
+
+/* ==========================================================================
+ * THE WEEK CHART DRAWS ITSELF — Monday to Sunday, once, on arrival
+ * ==========================================================================
+ * Components/StressWeekChart.vue owns the choreography and explains it; this is
+ * only where it is expressed. The four things worth knowing here are about the
+ * shape of the CSS rather than about the effect:
+ *
+ * 1. THE CHART IS NEVER HIDDEN BY A BASE RULE. The starting state — dashed off,
+ *    scaled to nothing, transparent — exists ONLY inside `@keyframes`, and the
+ *    keyframes are reached only through the animations below. There is no
+ *    `opacity: 0` anywhere that a browser could apply and then fail to undo.
+ *    That is the difference between an animation that does not run and a chart
+ *    that is not there, and this app is a PWA read on a phone at 6 a.m.: a week
+ *    of stress data that renders blank because a keyframe did not fire is a
+ *    worse bug than having no animation at all.
+ *
+ * 2. `animation-fill-mode: backwards` is what holds each mark off screen during
+ *    its delay. Without it every dot would be painted immediately, then vanish
+ *    when its animation finally started.
+ *
+ * 3. IT IS ALL BEHIND `prefers-reduced-motion: no-preference`. Not `reduce`
+ *    switching things off afterwards — that leaves the initial state applied
+ *    for anyone whose browser predates the query. With the preference set, the
+ *    rules below do not exist and the chart renders exactly as it did before
+ *    this file grew this block: same geometry, same colours, same dash (none).
+ *
+ * 4. THE LINE IS LINEAR AND ONLY THE DOTS ARE EASED. The dot delays are arc
+ *    lengths along the line, so they line up with the drawing front only while
+ *    the front moves at constant speed. The chart's comment has the long
+ *    version.
+ * ========================================================================== */
+@media (prefers-reduced-motion: no-preference) {
+    /* The pen. `--swd-len` is the leg's own length in user units, so the dash
+       exactly covers it and nothing repeats. */
+    .stress-week-draw .swd-line {
+        stroke-dasharray: var(--swd-len);
+        animation: swd-draw var(--swd-dur) linear var(--swd-delay) backwards;
+    }
+
+    /* The dot the pen deposits. `transform-box: fill-box` is what makes
+       `scale()` happen about the circle's own centre rather than about the
+       SVG's origin — without it the dot flies in from the top-left corner. */
+    .stress-week-draw .swd-dot {
+        transform-box: fill-box;
+        transform-origin: center;
+        animation: swd-pop 150ms cubic-bezier(0.2, 0.75, 0.35, 1) var(--swd-delay) backwards;
+    }
+
+    .stress-week-draw .swd-num {
+        animation: swd-fade 160ms ease-out var(--swd-delay) backwards;
+    }
+
+    .stress-week-draw .swd-train {
+        animation: swd-fade 220ms ease-out var(--swd-delay) backwards;
+    }
+}
+
+/* Each of these has a `from` and no `to`: the implicit final keyframe is the
+   element's own computed style, which is the finished chart. Written the other
+   way round — a `to` and a base rule holding the start — the start would be the
+   thing that survives when the animation does not. */
+@keyframes swd-draw {
+    from {
+        stroke-dashoffset: var(--swd-len);
+    }
+}
+
+@keyframes swd-pop {
+    from {
+        opacity: 0;
+        transform: scale(0);
+    }
+}
+
+@keyframes swd-fade {
+    from {
+        opacity: 0;
+    }
+}
+
+/* ==========================================================================
+ * THE BALANCE CARD ARRIVES — the day grows out of zero, the number settles
+ * ==========================================================================
+ * Components/BalanceCard.vue owns the choreography and explains it; this is
+ * where it is expressed. It is the same motion family as the week chart above,
+ * and deliberately so — one app, one way of appearing — but it is a block of
+ * its own because it is a different feature, and a feature's rules should die
+ * with it rather than be counted out of somebody else's media query.
+ *
+ * The four rules that matter are the week chart's four, and they are worth
+ * restating because this card is the FIRST thing the app draws:
+ *
+ * 1. NOTHING IS HIDDEN BY A BASE RULE. Every starting state — clipped away,
+ *    transparent, nudged down — exists only inside `@keyframes`, which are
+ *    inert until an `animation` property reaches them. There is no `opacity: 0`
+ *    a browser can apply and then fail to undo. A balance card that renders
+ *    blank because a keyframe did not fire is a worse bug than having no
+ *    entrance at all — this is the number the app exists to show.
+ *
+ * 2. `backwards` holds a delayed piece off screen for the length of its delay,
+ *    instead of painting it, then snatching it back when its animation starts.
+ *
+ * 3. IT IS ALL BEHIND `prefers-reduced-motion: no-preference`, stated
+ *    positively. With the preference set — or on a browser that never learned
+ *    the query — these rules do not exist and the card renders exactly as it
+ *    would have without this block: same geometry, same colours, and a live dot
+ *    that simply sits there, since the thing that pulses is a ring hidden
+ *    behind it rather than the dot itself.
+ *
+ * 4. THE GROW HAS AN EXPLICIT `to`, unlike the week chart's keyframes. It is
+ *    the one property here that cannot be interpolated against its own computed
+ *    value: `clip-path` animates DISCRETELY from a shape to `none`, so a `from`
+ *    on its own would not animate at all — it would flip, once, half way
+ *    through. Both ends are inset by 40 px on the top and bottom, which is what
+ *    keeps the bar's glow out of the clip.
+ * ========================================================================== */
+@media (prefers-reduced-motion: no-preference) {
+    /* The day grows out of break-even, both ways at once — which is the sentence
+       the meter is making: this far from zero, and on this side of it. The rail
+       and the centre tick are NOT in here; the axis is already on screen and the
+       day appears on it, so nothing slides in from anywhere. */
+    .bal-reveal {
+        animation: bal-grow 720ms cubic-bezier(0.22, 0.78, 0.3, 1) backwards;
+    }
+
+    /* The word, then the number a beat later. Both are already legible before
+       the meter finishes growing, because the headline is the point and the
+       picture is the explanation. */
+    .bal-word {
+        animation: bal-rise 380ms cubic-bezier(0.22, 0.78, 0.3, 1) 40ms backwards;
+    }
+
+    .bal-figure {
+        animation: bal-rise 460ms cubic-bezier(0.22, 0.78, 0.3, 1) 110ms backwards;
+    }
+
+    /* The legend under the meter, last: the totals are the small print of a
+       picture that has to be there first. */
+    .bal-ends {
+        animation: bal-fade 300ms ease-out 600ms backwards;
+    }
+
+    /* Today is still happening. Slow enough to be a heartbeat rather than a
+       notification, and it is the ring that moves — the dot underneath it is a
+       plain painted circle that never goes anywhere. */
+    .bal-live-ring {
+        animation: bal-pulse 2600ms ease-out infinite;
+    }
+}
+
+/* Zero width at the exact centre of the rail, opening symmetrically to the full
+   width — the left and right insets of 50% meet on the tick, which is where the
+   bar is anchored, so the day appears to be pushed out of break-even rather than
+   uncovered from one end. */
+@keyframes bal-grow {
+    from {
+        clip-path: inset(-40px 50% -40px 50%);
+    }
+
+    to {
+        clip-path: inset(-40px -40px -40px -40px);
+    }
+}
+
+@keyframes bal-rise {
+    from {
+        opacity: 0;
+        transform: translateY(0.4rem);
+    }
+}
+
+@keyframes bal-fade {
+    from {
+        opacity: 0;
+    }
+}
+
+/* A ping, not a blink: the ring swells out of the dot and is gone for the last
+   third of the cycle, so the card is still most of the time. */
+@keyframes bal-pulse {
+    0% {
+        transform: scale(0.6);
+    }
+
+    65% {
+        opacity: 0;
+        transform: scale(2.4);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(2.4);
+    }
+}
+
+/* ==========================================================================
+ * THE BODY CARD DRAWS ITSELF — oldest reading to newest, once per chip
+ * ==========================================================================
+ * Components/WeightChart.vue owns the choreography and explains it; this is
+ * where it is expressed, in a block of its own for the reason the balance card
+ * has one: a feature's rules should die with the feature.
+ *
+ * It is the week chart's construction, borrowed whole — no hidden state outside
+ * `@keyframes`, `backwards` holding every mark off screen through its delay,
+ * the gate stated positively, and a LINEAR pen so that delays measured in arc
+ * length are still delays measured in time. That block has the long version of
+ * all four and it is not repeated here.
+ *
+ * WHAT IS NEW IS THE BRIDGE, and it borrows from the OTHER neighbour. The
+ * dashed stretches this chart draws across a gap cannot be revealed by a dash
+ * offset — the offset is already spoken for by the 3-3 pattern that makes them
+ * dashed, and one dasharray cannot both repeat and hide a far end. So they are
+ * wiped with the balance card's `clip-path` inset, `to` stated explicitly for
+ * the reason that block gives (a shape animates DISCRETELY to `none`), and
+ * inset by 4 user units on the three sides that are not wiping so a 2-unit
+ * stroke's overhang is never shaved. A bridge is straight, so a wipe at
+ * constant speed and a pen at constant speed are the same motion — and when a
+ * browser declines the clip the line is simply THERE, which is the direction
+ * every failure in this file is arranged to fall.
+ *
+ * `--btd-len` is the run's own length, padded past the spline it covers; the
+ * component shows the measurement that decided the padding.
+ * ========================================================================== */
+@media (prefers-reduced-motion: no-preference) {
+    /* The pen. One stroke per measured run, each taking its own share of the
+       one second the whole history gets. */
+    .body-trend-draw .btd-line {
+        stroke-dasharray: var(--btd-len);
+        animation: btd-draw var(--btd-dur) linear var(--btd-delay) backwards;
+    }
+
+    /* The stretches nobody measured: crossed at the same speed, in dashes. */
+    .body-trend-draw .btd-bridge {
+        animation: btd-wipe var(--btd-dur) linear var(--btd-delay) backwards;
+    }
+
+    /* A reading, landing as the front arrives at it. `transform-box: fill-box`
+       is what makes `scale()` happen about the ring's own centre rather than
+       about the SVG's origin — without it every ring flies in from the corner. */
+    .body-trend-draw .btd-ring {
+        transform-box: fill-box;
+        transform-origin: center;
+        animation: btd-pop 150ms cubic-bezier(0.2, 0.75, 0.35, 1) var(--btd-delay) backwards;
+    }
+
+    .body-trend-draw .btd-num {
+        animation: btd-fade 160ms ease-out var(--btd-delay) backwards;
+    }
+
+    /* The wash and the thin raw line, arriving together once the lead is done. */
+    .body-trend-draw .btd-tail {
+        animation: btd-fade 260ms ease-out var(--btd-delay) backwards;
+    }
+}
+
+@keyframes btd-draw {
+    from {
+        stroke-dashoffset: var(--btd-len);
+    }
+}
+
+@keyframes btd-wipe {
+    from {
+        clip-path: inset(-4px 100% -4px -4px);
+    }
+
+    to {
+        clip-path: inset(-4px -4px -4px -4px);
+    }
+}
+
+@keyframes btd-pop {
+    from {
+        opacity: 0;
+        transform: scale(0);
+    }
+}
+
+@keyframes btd-fade {
+    from {
+        opacity: 0;
+    }
+}

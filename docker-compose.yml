@@ -1,0 +1,325 @@
+# =============================================================================
+# Health Tracker — Docker Compose (production, shared example.com VPS)
+# =============================================================================
+# Served at https://health.example.com — its own origin, so the PWA gets its own
+# service-worker scope and storage (the example.com shared-origin collision
+# between Scribly and Reflection is exactly what this avoids).
+#
+# The container publishes plain
+# HTTP on a LOOPBACK port only (127.0.0.1:3083) and the host's nginx terminates
+# TLS with the Cloudflare origin cert and proxies to it. Nothing here is
+# reachable from the internet except through host nginx -> Cloudflare.
+#
+# Every container runs as a NON-ROOT user from day one — this app deliberately
+# does not inherit the root-container debt that Reflection/Scribly/KidsQuest
+# still carry. uid:gid 990:983 is the host `health-tracker` system user, so
+# bind-mounted files never end up root-owned (the Scribly cache-ownership trap).
+#
+# CONTAINER HARDENING — WHAT EVERY SERVICE BELOW CARRIES, AND WHY
+#   security_opt: ['no-new-privileges:true']
+#     Set on EVERY service, including postgres and redis. It stops a process in
+#     the container from ever gaining privileges it did not start with — a
+#     setuid binary (`su`, `mount`, a stray `chsh` in some future base image)
+#     silently loses its setuid bit's effect. Nothing here executes a setuid
+#     binary on purpose, so this costs nothing and closes the cheapest step of
+#     the usual "shell in a container -> root in the container" ladder.
+#
+#   cap_drop: ['ALL']
+#     Set only on app / horizon / scheduler / web / assets. Those five start as
+#     a non-root uid (`user:` above), never bind a port below 1024, never chown a file
+#     they do not own and never change identity, so they need no Linux
+#     capability at all — the kernel hands every container a default set of 14
+#     they have no use for.
+#
+#     DELIBERATELY NOT ON postgres AND redis. Both official entrypoints start as
+#     root and drop to their own user, which needs CHOWN, SETUID, SETGID,
+#     DAC_OVERRIDE and FOWNER; `cap_drop: ALL` there is a container that will
+#     not boot. Trimming their caps to that exact list is a separate change with
+#     a staging smoke-test in front of it, not a line snuck into this one.
+#
+# Usage:
+#   docker compose up -d --build
+#   docker compose exec app php artisan migrate     # already non-root: see above
+# =============================================================================
+name: health-tracker
+
+services:
+  # --- PHP 8.5 / Laravel 13 -------------------------------------------------
+  app:
+    build:
+      context: ./docker/app
+      args:
+        APP_UID: '990'
+        APP_GID: '983'
+    image: health-tracker/app:latest
+    restart: unless-stopped
+    user: '990:983'
+    # See "CONTAINER HARDENING" in the header. php-fpm's stock pool directives
+    # are commented out in docker/app/Dockerfile precisely so nothing here ever
+    # needs to setuid, which is what makes both of these free.
+    security_opt: ['no-new-privileges:true']
+    cap_drop: ['ALL']
+    volumes:
+      - './:/var/www/html'
+    networks:
+      - health-tracker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # --- Queue worker: Laravel Horizon ----------------------------------------
+  # Same image as `app` (so it has the identical code, extensions and uid) but a
+  # different command — a php-fpm container cannot also be a queue worker, and
+  # `queue:work` inside the app container would die with it on every reload.
+  #
+  # Horizon's master process forks and signals supervisors, which is why the
+  # image carries ext-pcntl and ext-posix; composer refuses to install Horizon
+  # without them.
+  #
+  # No published port and no nginx in front: this container never serves HTTP.
+  # The dashboard, when it is looked at at all, is served by `app` and gated by
+  # App\Providers\HorizonServiceProvider.
+  #
+  # `restart: unless-stopped` plus Horizon's own supervision means the only way
+  # ingestion stops is if the whole stack is down — at which point /api/health
+  # reports a growing `unparsed_payloads`.
+  horizon:
+    # Same build stanza as `app` so `docker compose up -d --build` from a clean
+    # checkout works whichever service is named; the image name is identical, so
+    # the second build is a cache hit rather than a second image.
+    build:
+      context: ./docker/app
+      args:
+        APP_UID: '990'
+        APP_GID: '983'
+    image: health-tracker/app:latest
+    restart: unless-stopped
+    user: '990:983'
+    # Horizon forks and signals its own supervisors — that is pcntl/posix inside
+    # one uid, not a Linux capability, so `cap_drop: ALL` does not touch it.
+    security_opt: ['no-new-privileges:true']
+    cap_drop: ['ALL']
+    command: ['php', 'artisan', 'horizon']
+    volumes:
+      - './:/var/www/html'
+    networks:
+      - health-tracker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # SIGTERM makes Horizon finish the job in flight before exiting; the default
+    # 10s stop grace period would kill a mid-parse worker on every deploy.
+    stop_grace_period: 60s
+    healthcheck:
+      test: ['CMD-SHELL', 'php artisan horizon:status | grep -q running']
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
+
+  # --- Scheduler ------------------------------------------------------------
+  # Step 5 adds the first work in this app that happens on a clock rather than
+  # in response to a request: the meal-photo retention prune (`photos:prune`,
+  # daily at 03:20 local — see routes/console.php).
+  #
+  # A HOST CRONTAB WAS THE OBVIOUS ALTERNATIVE AND IS WORSE. It would have to
+  # `docker compose exec` its way in, it would run as whoever owns the crontab
+  # (the exact route by which Scribly's cache files ended up root-owned), and it
+  # would live outside the file that describes this stack — so a fresh
+  # `docker compose up` on a new box would come up quietly missing it.
+  #
+  # `schedule:work` rather than a cron calling `schedule:run` every minute: it
+  # is a long-lived self-ticking process, which is the shape compose supervises
+  # well. Same image, same uid, no published port, no HTTP.
+  #
+  # NOT folded into the horizon container: one process per container is why a
+  # crashed scheduler does not take the queue worker with it, and why
+  # `docker compose logs scheduler` is readable.
+  scheduler:
+    build:
+      context: ./docker/app
+      args:
+        APP_UID: '990'
+        APP_GID: '983'
+    image: health-tracker/app:latest
+    restart: unless-stopped
+    user: '990:983'
+    security_opt: ['no-new-privileges:true']
+    cap_drop: ['ALL']
+    command: ['php', 'artisan', 'schedule:work']
+    volumes:
+      - './:/var/www/html'
+    networks:
+      - health-tracker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    stop_grace_period: 30s
+
+  # --- nginx sidecar: FastCGI -> HTTP on the loopback port ------------------
+  # php-fpm speaks FastCGI, not HTTP, and the house pattern is `proxy_pass` from
+  # host nginx to a loopback HTTP port. This thin sidecar bridges the two.
+  web:
+    image: nginx:alpine
+    restart: unless-stopped
+    user: '990:983'
+    security_opt: ['no-new-privileges:true']
+    cap_drop: ['ALL']
+    # The one service that also gets an IMMUTABLE ROOT FILESYSTEM, because it is
+    # the only one that already had nothing to write outside /tmp:
+    # docker/web/nginx.conf puts the pid file and all five *_temp_path
+    # directives under /tmp precisely because it runs as a non-root uid. Both
+    # mounts below it are already `:ro`.
+    #
+    # The nginx image's /docker-entrypoint.d scripts each `touch` the file they
+    # want to rewrite and exit 0 when they cannot, so a read-only root is a
+    # supported configuration for them rather than a crash — and two of the four
+    # are opt-in on an env var this stack does not set.
+    #
+    # /tmp has to come back as a tmpfs or nginx cannot write its pid.
+    read_only: true
+    tmpfs: ['/tmp']
+    ports:
+      - '127.0.0.1:3083:8080'
+    volumes:
+      - './:/var/www/html:ro'
+      - './docker/web/nginx.conf:/etc/nginx/nginx.conf:ro'
+    networks:
+      - health-tracker
+    depends_on:
+      - app
+
+  # --- Asset build (one-shot, profile-gated) --------------------------------
+  # Step 3 adds an Inertia/Vue front end, so `public/build` has to exist before
+  # the site serves anything. It is built HERE rather than in the app image
+  # because the app image mounts the whole project at /var/www/html — anything
+  # COPYed into the image at that path is shadowed by the bind mount the moment
+  # the container starts, so a multi-stage node build would produce assets that
+  # nginx could never see.
+  #
+  # `profiles:` keeps it out of `docker compose up`: this is a task, not a
+  # service, and it must not restart-loop after it exits 0.
+  #
+  #   docker compose --profile build run --rm assets
+  #
+  # Same uid as everything else, so `node_modules/` and `public/build/` land
+  # owned by the host `health-tracker` user. HOME and the npm cache are pointed
+  # at /tmp because the app uid has no home directory inside a stock node image.
+  assets:
+    image: node:24-alpine
+    profiles: ['build']
+    user: '990:983'
+    security_opt: ['no-new-privileges:true']
+    cap_drop: ['ALL']
+    working_dir: /var/www/html
+    environment:
+      HOME: /tmp
+      npm_config_cache: /tmp/.npm
+    volumes:
+      - './:/var/www/html'
+    networks:
+      - health-tracker
+    command: ['sh', '-c', 'npm ci --no-audit --fund=false && npm run build']
+
+  # --- Postgres 18 ----------------------------------------------------------
+  # No published host port: reachable only on the private compose network.
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    # no-new-privileges only. NOT cap_drop: ALL — the official entrypoint starts
+    # as root and drops to `postgres`, which needs CHOWN/SETUID/SETGID/
+    # DAC_OVERRIDE/FOWNER. See the header.
+    security_opt: ['no-new-privileges:true']
+    environment:
+      POSTGRES_DB: '${DB_DATABASE}'
+      POSTGRES_USER: '${DB_USERNAME}'
+      POSTGRES_PASSWORD: '${DB_PASSWORD}'
+    volumes:
+      # postgres:18 moved PGDATA to /var/lib/postgresql/18/docker and declares
+      # the VOLUME one level up — mount the parent or the data is not persisted.
+      - 'health-tracker-pgdata:/var/lib/postgresql'
+    networks:
+      - health-tracker
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "${DB_USERNAME}" -d "${DB_DATABASE}"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # --- Redis ----------------------------------------------------------------
+  # Holds the queue AND the cache (sessions live in the database, but cached
+  # config and every queued ingest payload do not), and it is reachable from
+  # every container on this bridge network. With no password, anything that ever
+  # gets a foothold in any container on the network can read the cache and push
+  # jobs onto the queue. `--requirepass` is the one line that closes that.
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    # no-new-privileges only, same reasoning as postgres: the official entrypoint
+    # starts as root and drops to `redis`. See the header.
+    security_opt: ['no-new-privileges:true']
+    # The value, not a copy of it: this is the same REDIS_PASSWORD Laravel reads
+    # out of .env, so the two cannot drift apart.
+    environment:
+      REDIS_PASSWORD: '${REDIS_PASSWORD:-}'
+    # WHY THIS IS A SHELL AND NOT SIMPLY `--requirepass ${REDIS_PASSWORD}`:
+    # .env.example has shipped `REDIS_PASSWORD=null` since step 2, and Laravel's
+    # env() reads the literal string `null` as PHP null — i.e. NO password.
+    # Compose does not share that convention: it would interpolate the four
+    # characters n-u-l-l and set them AS the password, so redis would start
+    # demanding a password the app does not know it has, and every queued job
+    # and every cache read would fail with NOAUTH at the next `up -d`. For a
+    # value nobody typed.
+    #
+    # So `null` and empty both mean "auth off" here, exactly as they do to the
+    # app. That is what makes this file's change alone incapable of breaking a
+    # stack that has not set a real password yet: until .env carries one, this
+    # is byte-for-byte the redis that was running before.
+    #
+    # `$$` escapes compose's own interpolation so the container's shell does the
+    # expanding — the password is never written into this file.
+    command:
+      - 'sh'
+      - '-euc'
+      - |
+        if [ -z "$${REDIS_PASSWORD:-}" ] || [ "$${REDIS_PASSWORD}" = 'null' ]; then
+            echo 'redis: REDIS_PASSWORD is unset — starting WITHOUT authentication'
+            exec redis-server --appendonly yes
+        fi
+        exec redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD}"
+    volumes:
+      - 'health-tracker-redis:/data'
+    networks:
+      - health-tracker
+    # `redis-cli ping` on its own stops being a health check the moment there is
+    # a password, and does so SILENTLY: an unauthenticated PING answers "NOAUTH
+    # Authentication required." and still EXITS 0, so the old test would have
+    # gone on reporting healthy while every client failed. Match on the reply,
+    # and authenticate when there is something to authenticate with.
+    healthcheck:
+      test:
+        - 'CMD-SHELL'
+        - >-
+          if [ -z "$${REDIS_PASSWORD:-}" ] || [ "$${REDIS_PASSWORD}" = 'null' ];
+          then redis-cli ping;
+          else redis-cli --no-auth-warning -a "$${REDIS_PASSWORD}" ping; fi
+          | grep -q PONG
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  health-tracker:
+    driver: bridge
+
+volumes:
+  health-tracker-pgdata:
+    driver: local
+  health-tracker-redis:
+    driver: local

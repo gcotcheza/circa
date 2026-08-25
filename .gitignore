@@ -1,0 +1,34 @@
+*.log
+.DS_Store
+.env
+.env.backup
+.env.production
+
+# Real credentials for the test database. `.env.testing.example` is committed;
+# this is not. Its whole job is to keep `--env=testing` off the production DB.
+.env.testing
+.phpactor.json
+.phpunit.result.cache
+/.codex
+/.cursor/
+/.idea
+/.nova
+/.phpunit.cache
+/.vscode
+/.zed
+/auth.json
+/node_modules
+/public/build
+/public/fonts-manifest.dev.json
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/vendor
+_ide_helper.php
+Homestead.json
+Homestead.yaml
+Thumbs.db
+
+# Local-only compose overrides (host ports, debug tooling)
+/docker-compose.override.yml
