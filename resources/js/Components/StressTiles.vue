@@ -42,7 +42,7 @@ const hrvChange = computed(() => {
 const restingDelta = computed(() => {
   const { delta, previousDate } = props.restingHr
 
-  if (delta === null) return null
+  if (delta === null || !previousDate) return null
 
   return `${signed(delta)} vs ${formatShortDate(previousDate)}`
 })

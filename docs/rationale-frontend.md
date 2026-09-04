@@ -24,6 +24,7 @@ full reasoning.
 - [Photo provenance on meal items](#photo-provenance-on-meal-items)
 - [Why the body chart bridges its gaps](#why-the-body-chart-bridges-its-gaps)
 - [The body chart's draw-in](#the-body-charts-draw-in)
+- [The month names are the app's own](#the-month-names-are-the-apps-own)
 
 ## Night Fragment Note
 
@@ -661,3 +662,37 @@ selection would mean tapping a ring and waiting a second for the answer.
 source: the `Math.hypot` measurement, `(distance / journey.value.total) * DRAW_MS`,
 `leg.length * CURVE_PAD` with a pad greater than 1, the per-mark custom properties,
 `:key="drawKey"`, and the bridge wipe's `clip-path: inset(-4px 100% -4px -4px)`.
+
+## The month names are the app's own
+
+`lib/dates.js` exports `MONTHS` and `WEEKDAY_NAMES` and every short date in the
+browser is written from them. The obvious alternative — asking the platform, as
+`toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })` — is what the
+app did until 1 September 2026, and it is wrong here for two reasons.
+
+The first is that it disagrees with the server. en-GB's CLDR data abbreviates
+September as "Sept", the one month it does not cut to three letters; Carbon
+under locale `en` writes "Sep", `lib/chart.js` has always written "Sep" from a
+table, and Air Datepicker's bundled `en` locale ships `monthsShort` with "Sep"
+in it. So for one month a year a preset chip read "1–30 Sept" while the report
+that chip generated was headed "1–30 Sep 2026" — the two on one screen, which
+is precisely what `HealthReport::rangeLabel()` exists to prevent. Eleven months
+of the year the two agree and nothing shows.
+
+The second is that the platform's answer is the *viewer's*, not ours. CLDR data
+ships with the browser, so a phone one major version behind can abbreviate
+differently from the laptop beside it, and neither is a bug anyone can see from
+here. A table in the repository renders the same date the same way everywhere,
+and it is the same decision `lib/chart.js` made on its own for its axis labels.
+
+Two tables, not one, and deliberately: `lib/dates.js` exports a SUNDAY-indexed
+`WEEKDAY_NAMES` to be read with `Date#getDay()`, while `lib/stress.js` keeps a
+Monday-first `WEEKDAYS` because that one is the heatmap's row order, not a
+lookup. They are the same seven strings for different jobs, and merging them
+would put Sunday at the top of the heatmap.
+
+`tests/js/dates.test.js` holds both tables to three-letter names and pins
+September; `tests/Feature/Client/MonthNamesAgreementTest.php` reads both tables
+out of the module — twelve months, seven weekdays — and compares them against
+Carbon's own output, the only thing that would catch the client and the server
+drifting apart in a month nothing else names.

@@ -166,6 +166,16 @@ test('a preset range reads as a human date range', () => {
   assert.equal(shortRange('2026-08-03', '2026-08-09'), '3–9 Aug')
   assert.equal(shortRange('2026-07-28', '2026-08-10'), '28 Jul – 10 Aug')
   assert.equal(shortRange('2026-08-10', '2026-08-10'), '10 Aug')
+
+  // September, because the browser's own answer here is "Sept" and the report
+  // this chip generates is headed "1–30 Sep 2026" by the server.
+  assert.equal(shortRange('2026-09-01', '2026-09-30'), '1–30 Sep')
+  assert.equal(shortRange('2026-08-28', '2026-09-03'), '28 Aug – 3 Sep')
+})
+
+test('a range that is not two calendar days has no label', () => {
+  assert.equal(shortRange('nonsense', '2026-09-03'), '')
+  assert.equal(shortRange('2026-09-01', ''), '')
 })
 
 /* THE ARCHIVE LINE. A focused report's headline may say nothing about most of

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { isWithinIsoBounds, parseIsoDate, toIsoDate } from '../../resources/js/lib/dates.js'
+import { dayMonth, isoDayMonth, isWithinIsoBounds, MONTHS, parseIsoDate, toIsoDate, WEEKDAY_NAMES } from '../../resources/js/lib/dates.js'
 
 /**
  * The conversion between a calendar day and a `Date`.
@@ -154,4 +154,38 @@ test('a value that is not a calendar day is never within bounds', () => {
   assert.equal(isWithinIsoBounds('', '2026-01-01', '2026-12-31'), false)
   assert.equal(isWithinIsoBounds(null), false)
   assert.equal(isWithinIsoBounds('nonsense'), false)
+})
+
+/* THE APP'S OWN MONTH NAMES. Asked for a short month, en-GB answers "Sept" for
+ * September — four letters, the only month it does not cut to three — while the
+ * server (Carbon), the charts and the date picker all say "Sep". One month a
+ * year the same date was written two ways on one screen. The names are ours
+ * now, so the browser's locale data cannot move them, and a second browser with
+ * older CLDR data cannot disagree with the first. */
+
+test('every month name is three letters, September included', () => {
+  assert.equal(MONTHS.length, 12)
+  assert.deepEqual(MONTHS.filter((m) => m.length !== 3), [])
+  assert.equal(MONTHS[8], 'Sep')
+})
+
+test('every weekday name is three letters, Sunday-indexed', () => {
+  assert.equal(WEEKDAY_NAMES.length, 7)
+  assert.deepEqual(WEEKDAY_NAMES.filter((d) => d.length !== 3), [])
+  assert.equal(WEEKDAY_NAMES[0], 'Sun')
+  assert.equal(WEEKDAY_NAMES[4], 'Thu')
+})
+
+test('a day and month are written from those names', () => {
+  assert.equal(dayMonth(new Date(2026, 8, 6)), '6 Sep')
+  assert.equal(isoDayMonth('2026-09-06'), '6 Sep')
+  assert.equal(isoDayMonth('2026-08-06'), '6 Aug')
+})
+
+test('an unusable date is an empty string, never "Invalid Date"', () => {
+  assert.equal(isoDayMonth('2026-02-31'), '')
+  assert.equal(isoDayMonth(''), '')
+  assert.equal(isoDayMonth(null), '')
+  assert.equal(dayMonth(new Date('nonsense')), '')
+  assert.equal(dayMonth('2026-09-06'), '')
 })

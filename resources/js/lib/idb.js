@@ -29,7 +29,7 @@ let connection = null
 function open() {
   if (connection) return connection
 
-  connection = new Promise((resolve, reject) => {
+  const memo = new Promise((resolve, reject) => {
     if (typeof indexedDB === 'undefined') {
       reject(new Error('This browser has no IndexedDB, so nothing can be queued offline.'))
 
@@ -50,7 +50,17 @@ function open() {
       }
     }
 
-    request.onsuccess = () => resolve(request.result)
+    request.onsuccess = () => {
+      const db = request.result
+
+      // iOS closes idle connections while the app sleeps in the background;
+      // forget the handle so the next call reopens instead of using a dead one.
+      db.onclose = () => {
+        if (connection === memo) connection = null
+      }
+
+      resolve(db)
+    }
     request.onerror = () => reject(request.error ?? new Error('The offline store could not be opened.'))
 
     // Another tab holding an older version open — rare, and silent unless said.
@@ -58,27 +68,45 @@ function open() {
   }).catch((error) => {
     // Do not memoise a failure: a private-mode window that later becomes a
     // normal one should get a working store, not the old error.
-    connection = null
+    if (connection === memo) connection = null
 
     throw error
   })
 
-  return connection
+  connection = memo
+
+  return memo
+}
+
+function attempt(db, mode, work) {
+  const transaction = db.transaction(STORE, mode)
+
+  return new Promise((resolve, reject) => {
+    const request = work(transaction.objectStore(STORE))
+
+    transaction.onabort = () => reject(transaction.error ?? new Error('The offline store rejected the write.'))
+
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error)
+  })
 }
 
 function run(mode, work) {
-  return open().then(
-    (db) =>
-      new Promise((resolve, reject) => {
-        const transaction = db.transaction(STORE, mode)
-        const request = work(transaction.objectStore(STORE))
+  const opened = open()
 
-        transaction.onabort = () => reject(transaction.error ?? new Error('The offline store rejected the write.'))
+  return opened.then((db) => {
+    try {
+      return attempt(db, mode, work)
+    } catch (error) {
+      // WebKit does not reliably fire `close`: a dead handle announces itself
+      // here. Retry once, forgetting only the memo THIS call resolved from.
+      if (error?.name !== 'InvalidStateError') throw error
 
-        request.onsuccess = () => resolve(request.result)
-        request.onerror = () => reject(request.error)
-      })
-  )
+      if (connection === opened) connection = null
+
+      return open().then((fresh) => attempt(fresh, mode, work))
+    }
+  })
 }
 
 /** Every queued action, oldest first. */

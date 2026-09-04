@@ -9,6 +9,7 @@
  * next step, which a rejected promise would flatten into "something went wrong".
  */
 
+import { dayMonth, parseIsoDate } from './dates.js'
 import { postJson } from './http.js'
 
 /** Ask for a report. */
@@ -98,15 +99,16 @@ export async function watchReport(id, { onState, intervalMs = 4000, maxMs = 900_
  * whose ranges are computed rather than stored.
  */
 export function shortRange(start, end) {
-  const from = new Date(`${start}T00:00:00`)
-  const to = new Date(`${end}T00:00:00`)
+  const from = parseIsoDate(start)
+  const to = parseIsoDate(end)
 
-  const day = (d) => d.toLocaleDateString('en-GB', { day: 'numeric' })
-  const dayMonth = (d) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  if (!from || !to) return ''
 
   if (start === end) return dayMonth(to)
 
-  return from.getMonth() === to.getMonth() ? `${day(from)}–${dayMonth(to)}` : `${dayMonth(from)} – ${dayMonth(to)}`
+  return from.getMonth() === to.getMonth()
+    ? `${from.getDate()}–${dayMonth(to)}`
+    : `${dayMonth(from)} – ${dayMonth(to)}`
 }
 
 /**

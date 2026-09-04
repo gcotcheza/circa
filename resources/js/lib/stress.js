@@ -26,6 +26,9 @@
  * would turn a warning into a defect.
  * See docs/rationale-frontend.md § "The stress band pastels, measured"
  */
+
+import { dayMonth, isoDayMonth, parseIsoDate, WEEKDAY_NAMES } from './dates.js'
+
 export const BANDS = {
   great: { label: 'Great', fill: 'var(--stress-great)', ink: 'var(--stress-ink-great)' },
   normal: { label: 'Normal', fill: 'var(--stress-normal)', ink: 'var(--stress-ink-normal)' },
@@ -93,30 +96,25 @@ export function coverageLabel(day) {
   return day.confidence === 'none' ? readings : `${readings} · ${day.confidence} confidence`
 }
 
+/** The heatmap's ROW ORDER, Monday-first — not lib/dates.js's Sunday-indexed lookup. */
 export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 /**
  * "Thu 6 Aug". The weekday is there because the whole page is organised by week,
  * and "6 Aug" alone forces a glance back at the chart to work out which column
- * it was. Parsed with an explicit midnight so the browser reads a local date
- * rather than a UTC instant — an hour earlier, and a different day at the start
- * of a month.
+ * it was. Read at LOCAL midnight by lib/dates.js, for the reason it gives there.
  */
 export function formatDay(iso) {
-  if (!iso) return ''
+  const date = parseIsoDate(iso)
 
-  return new Date(`${iso}T00:00:00`).toLocaleDateString('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  })
+  if (!date) return ''
+
+  return `${WEEKDAY_NAMES[date.getDay()]} ${dayMonth(date)}`
 }
 
 /** "6 Aug" — the same date where the week is already established by context. */
 export function formatShortDate(iso) {
-  if (!iso) return ''
-
-  return new Date(`${iso}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  return isoDayMonth(iso)
 }
 
 /** "07:00" — an hour of the day, zero-padded so a column of them lines up. */

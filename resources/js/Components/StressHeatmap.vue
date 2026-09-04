@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { bandFill, bandLabel, WEEKDAYS } from '../lib/stress'
+import { bandFill, bandLabel, formatShortDate, WEEKDAYS } from '../lib/stress'
 
 /**
  * The hour-of-the-week grid — 168 cells, in two modes.
@@ -219,10 +219,6 @@ const detail = computed(() => {
   }
 })
 
-function shortDate(iso) {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-}
-
 /** Counted over hours that HAVE happened: "40 of 168" on a Monday is a calendar fact. */
 const coverage = computed(() => {
   const grid = props.weekGrid
@@ -247,7 +243,7 @@ const typicalEmptyCells = computed(() =>
         <h3 class="text-sm font-semibold">Hour of the week</h3>
         <span class="tnum shrink-0 text-[11px] text-stone-500 dark:text-stone-400">
           <template v-if="mode === 'week'">{{ weekLabel }}</template>
-          <template v-else>{{ shortDate(heatmap.from) }} – {{ shortDate(heatmap.to) }}</template>
+          <template v-else>{{ formatShortDate(heatmap.from) }} – {{ formatShortDate(heatmap.to) }}</template>
         </span>
       </div>
 

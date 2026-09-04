@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { forPortion, lookupProduct } from '../lib/products'
 import { boxText, typedIn } from '../lib/boxes'
+import { dayMonth } from '../lib/dates'
 import { decimal, num } from '../lib/format'
 
 /**
@@ -88,10 +89,7 @@ const canAdd = computed(
 const fetched = computed(() => {
   if (!product.value?.fetchedAt) return ''
 
-  return new Date(product.value.fetchedAt).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-  })
+  return dayMonth(new Date(product.value.fetchedAt))
 })
 
 function add() {

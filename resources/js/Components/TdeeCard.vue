@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { dayMonth, isoDayMonth } from '../lib/dates'
 import { num } from '../lib/format'
 
 /**
@@ -35,12 +36,7 @@ const weighInsLeft = computed(() =>
 )
 
 function shortDate(iso) {
-  if (!iso) return '—'
-
-  return new Date(`${iso}T00:00:00`).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-  })
+  return isoDayMonth(iso) || '—'
 }
 
 const windowLabel = computed(() => `${shortDate(props.tdee.window.start)} – ${shortDate(props.tdee.window.end)}`)
@@ -53,7 +49,7 @@ const computedAtLabel = computed(() => {
 
   return sameDay
     ? at.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-    : at.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+    : dayMonth(at)
 })
 
 // Direction in the plainest words. `intakeVersusTdee` is signed intake − TDEE, so

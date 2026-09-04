@@ -8,10 +8,9 @@
  * timezone, so a test in UTC and a phone in Amsterdam agree which day a point is.
  */
 
-const MS_PER_DAY = 86_400_000
+import { MONTHS, WEEKDAY_NAMES } from './dates.js'
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const MS_PER_DAY = 86_400_000
 
 /** '2026-08-09' -> 20675. */
 export function dayIndex(iso) {
@@ -36,7 +35,7 @@ export function shortDate(day) {
 export function longDate(day) {
   const date = fromDayIndex(day)
 
-  return `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`
+  return `${WEEKDAY_NAMES[date.getUTCDay()]} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`
 }
 
 export function yearOf(day) {

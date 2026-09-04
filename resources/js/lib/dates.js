@@ -19,6 +19,18 @@ const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/
 const pad = (n) => String(n).padStart(2, '0')
 
 /**
+ * The app's own names, never the browser's locale data — en-GB's Intl answers
+ * "Sept" for September. See docs/rationale-frontend.md § "The month names are the app's own"
+ */
+export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/**
+ * Sunday-indexed, to be read with `Date#getDay()`. lib/stress.js keeps a
+ * Monday-first list on purpose: that one is the heatmap's row order.
+ */
+export const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+/**
  * A YYYY-MM-DD string as a `Date` at LOCAL midnight, or null.
  *
  * An unbounded end of history arrives as `null` from the server (HistorySpan)
@@ -57,6 +69,18 @@ export function toIsoDate(date) {
   if (!(date instanceof Date) || Number.isNaN(date.getTime())) return ''
 
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+/** '6 Sep' — a date's LOCAL day and month, in the names above. '' if unusable. */
+export function dayMonth(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return ''
+
+  return `${date.getDate()} ${MONTHS[date.getMonth()]}`
+}
+
+/** The same from a YYYY-MM-DD, read at local midnight like everything here. */
+export function isoDayMonth(iso) {
+  return dayMonth(parseIsoDate(iso))
 }
 
 /**
