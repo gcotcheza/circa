@@ -374,8 +374,9 @@ login page.
   analysis and its own confirm. See "A meal is a series of plates" below; the
   status bullet above describes a single entry's progress, not the meal's.
 - Response schema: as v1 (items[] with name, portion/kcal/macros as min–max ranges,
-  confidence; notes). **Ranges everywhere, never point estimates.** Prompt the user to
-  include a scale reference in frame.
+  confidence; notes). **Ranges everywhere: a best estimate may lead, but the range
+  is always beside it, never dropped.** Prompt the user to include a scale
+  reference in frame.
 
 **Step 5 decisions for the photo path.** Everything below was forced by the
 schema that already existed, by what the model can actually answer from a

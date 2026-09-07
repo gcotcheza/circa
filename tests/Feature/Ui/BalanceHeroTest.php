@@ -66,8 +66,10 @@ final class BalanceHeroTest extends TestCase
         self::assertStringContainsString('const rangeText = computed(() => rangeLine(headline.value))', $code);
         self::assertStringContainsString('v-if="rangeText"', $code, self::CARD.': the range line has no place to render.');
 
-        // The end label still SAYS a band; `band()` refuses the midpoint collapse.
-        self::assertStringContainsString('value: band(kcalIn.value)', $code);
+        // The eaten legend takes the same demotion rather than dropping the
+        // width: the best estimate, then `band()`'s two ends beside it.
+        self::assertStringContainsString('const eaten = computed(() => bestEstimate(kcalIn.value))', $code);
+        self::assertStringContainsString('v-if="end.width"', $code, self::CARD.': the eaten width has nowhere to render.');
     }
 
     /** Direction is said four ways over, so colour is never carrying it alone. */

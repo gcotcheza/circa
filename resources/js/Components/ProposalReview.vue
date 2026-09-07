@@ -5,6 +5,7 @@ import { useInlineValidation } from '../lib/validation/inline'
 import { estimateMeal, reanalyzePhoto, removeMealPhoto } from '../lib/vision'
 import { KIND, online, submitOrQueue } from '../lib/queue'
 import { boxText, typedIn } from '../lib/boxes'
+import { dominantItem } from '../lib/dominant'
 import { applyShare, shareOf, unapplyShare } from '../lib/share'
 import { decimal } from '../lib/format'
 import { errorLine } from '../lib/error-rows'
@@ -436,6 +437,92 @@ const hintValue = computed(() => (form.hint ?? '').trim())
  */
 const hintChanged = computed(() => hintValue.value !== (entry.value?.hint ?? ''))
 
+/**
+ * THE ONE LINE WORTH ANSWERING FOR. Ranges combine in quadrature, so a PLATE's
+ * spread is usually one item's (lib/dominant.js) — 820–1380 of rolls beside
+ * 75–135 of soup — and a count or a weight is the one thing the model takes as
+ * fact rather than re-guessing (PromptV3Photo). The plate, not the meal: this
+ * sheet reviews one photograph, and `form.items` is that photograph's lines.
+ */
+const dominant = computed(() => (canRerun.value && entry.value ? dominantItem(form.items) : null))
+
+// Asked about BY NAME: the name is what goes into the note, and what survives a
+// re-analysis renumbering the rows. An unnamed line cannot be asked about.
+const dominantName = computed(() => (dominant.value === null ? '' : (form.items[dominant.value.index]?.name ?? '').trim()))
+
+/*
+ * Answered once, not asked twice: a re-analysis usually leaves the same item
+ * widest, and asking again for a count already given reads as not listening.
+ * Local to the sheet because the answer itself is in the note the server keeps.
+ */
+const narrowedNames = ref(new Set())
+
+const narrowAnswer = ref('')
+
+// Where focus goes when this block unmounts, and where the answer landed.
+const hintBox = ref(null)
+
+const narrowError = ref('')
+
+const showNarrow = computed(() => dominantName.value !== '' && !narrowedNames.value.has(dominantName.value))
+
+const narrowShare = computed(() => (dominant.value === null ? 0 : Math.round(dominant.value.share * 100)))
+
+/**
+ * The answer joins the note the model is already handed, and asks again through
+ * the path a typed note takes — one hint, one re-analysis. Past the note's
+ * ceiling it stops with the server's own sentence rather than spending a call
+ * on a request that would come back refused.
+ */
+async function narrow() {
+  const answer = narrowAnswer.value.trim()
+
+  // An empty box refused in silence hides the reason it refused (C12), and the
+  // button stays enabled so the sentence is what explains it.
+  if (answer === '') {
+    narrowError.value = 'Say how many there were, or what it weighed — for example 8 pieces, or 180 g.'
+
+    return
+  }
+
+  if (!showNarrow.value || reanalyzing.value || !online.value) return
+
+  narrowError.value = ''
+
+  const name = dominantName.value
+  const clause = `${name}: ${answer}`
+  const note = hintValue.value
+
+  // Renaming an item and answering again would otherwise stack near-duplicate
+  // clauses toward the note's 500-character ceiling.
+  if (note === '') form.hint = clause
+  else if (!note.includes(clause)) form.hint = `${note}; ${clause}`
+
+  // The pair a typed box sends (lib/validation/inline.js): the note has been
+  // written into, so from here it is judged the way the user's own typing is.
+  inline.clear('hint')
+  inline.check('hint')
+
+  if (form.errors.hint) return
+
+  /*
+   * The note keeps the answer whatever the ask does — a refused re-analysis
+   * leaves it for the button below to spend. Only the SUPPRESSION waits for an
+   * ask that actually left, or one lost connection would silence the nudge for
+   * the rest of the sheet's life.
+   */
+  const asked = await rerun()
+
+  if (!asked) return
+
+  // This block is about to unmount: focus goes to the note the answer landed
+  // in, rather than to the top of the document.
+  hintBox.value?.focus()
+
+  narrowedNames.value.add(name)
+  narrowAnswer.value = ''
+}
+
 /** 0.3 / 0.6 / 0.9 back to the word the model actually chose. */
 function confidenceWord(value) {
   if (value === null || value === undefined) return null
@@ -506,6 +593,11 @@ watch(
 
     form.clearErrors()
     inline.reset()
+
+    // A part-typed answer is about the numbers that have just been replaced;
+    // `narrowedNames` deliberately survives, since the question was answered.
+    narrowAnswer.value = ''
+    narrowError.value = ''
     localErrors.value = {}
     confirmingDelete.value = false
     confirmingPhotoRemoval.value = false
@@ -601,11 +693,13 @@ async function rerun() {
   if (!result.ok) {
     actionError.value = result.message
 
-    return
+    return false
   }
 
   // The day view owns the polling; reloading hands this meal back as `analyzing`.
   router.reload({ only: ['meals', 'summary'] })
+
+  return true
 }
 
 function discard() {
@@ -771,6 +865,7 @@ const confidenceLabel = { low: 'low confidence', medium: 'medium confidence', hi
               What you know about this photo <span class="font-normal opacity-70">optional</span>
             </span>
             <input
+              ref="hintBox"
               v-model="form.hint"
               type="text"
               enterkeyhint="done"
@@ -999,6 +1094,52 @@ const confidenceLabel = { low: 'low confidence', medium: 'medium confidence', hi
                     >
                   </div>
                 </div>
+              </div>
+
+              <!--
+                THE QUESTION WORTH ASKING, on the line that owns this PLATE's
+                range: it writes into the note above and fires the SAME
+                re-analysis as the button below, so there is one hint and one
+                path to the model, whether it was typed or tapped in here.
+              -->
+              <div
+                v-if="showNarrow && index === dominant?.index"
+                class="space-y-1.5 rounded-xl bg-teal-50 px-3 py-2.5 dark:bg-teal-950/60"
+              >
+                <p :id="`narrow-help-${index}`" class="text-[11px] text-teal-900 dark:text-teal-200">
+                  This one sets about {{ narrowShare }}% of this plate's range. A count or a weight would narrow it.
+                </p>
+
+                <div class="flex items-center gap-2">
+                  <input
+                    v-model="narrowAnswer"
+                    type="text"
+                    enterkeyhint="send"
+                    placeholder="e.g. 8 pieces or 180 g"
+                    :aria-label="`How much ${dominantName} — a count or a weight`"
+                    :aria-describedby="narrowError ? `narrow-help-${index} narrow-error-${index}` : `narrow-help-${index}`"
+                    :class="[inputClass, 'min-h-[44px]']"
+                    @input="narrowError = ''"
+                    @keyup.enter="narrow"
+                  >
+                  <button
+                    type="button"
+                    :disabled="reanalyzing || !online"
+                    class="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-lg bg-teal-600 px-3
+                           text-sm font-medium text-white active:scale-95 disabled:opacity-60"
+                    @click="narrow"
+                  >
+                    Narrow
+                  </button>
+                </div>
+
+                <p v-if="narrowError" :id="`narrow-error-${index}`" class="text-[11px] text-rose-700 dark:text-rose-300">
+                  {{ narrowError }}
+                </p>
+
+                <p v-if="!online" class="text-[11px] text-teal-900/80 dark:text-teal-200/80">
+                  {{ wording.againOffline }}
+                </p>
               </div>
             </div>
 

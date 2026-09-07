@@ -1,7 +1,8 @@
 /**
- * Formatting helpers. The rule this file exists to enforce: a range is rendered
- * as a range. Let ten places in the UI each show the midpoint "for readability"
- * and a ±400 kcal estimate starts looking like a measurement.
+ * Formatting helpers. The rule this file exists to enforce: an estimate is
+ * rendered with its width. `band` prints both ends; `bestEstimate` leads with
+ * the midpoint and keeps both ends under it. Neither drops the width — a
+ * midpoint on its own is a ±400 kcal guess that looks like a measurement.
  */
 
 const locale = 'en-GB'
@@ -87,7 +88,8 @@ export function num(value, digits = 0) {
 /**
  * A {min, mid, max} band as text. A zero-width band — every manual entry —
  * collapses to a single number, the correct claim about it: the user typed
- * 240 kcal and meant 240 kcal. Anything wider keeps both ends, always.
+ * 240 kcal and meant 240 kcal. Anything wider keeps both ends: this IS the
+ * width, and `bestEstimate` is the only place a midpoint may lead it.
  */
 export function band(value, digits = 0, unit = '') {
   if (!value || value.mid === null || value.mid === undefined) return '—'
@@ -102,6 +104,37 @@ export function band(value, digits = 0, unit = '') {
   }
 
   return `${num(min, digits)}–${num(max, digits)}${suffix}`
+}
+
+/** Not balance.js's `toStep`: balance.js imports this file. See
+ * docs/DECISIONS.md § "meal-and-day-energy-lead-with-the-best-estimate". */
+const ESTIMATE_STEP = 10
+
+/**
+ * A {min, mid, max} band led by its best estimate, with `band`'s text as the
+ * width underneath — the shape lib/balance.js `heroFigure` already gives the day
+ * card, because the top of "588–857" was being read as the likely figure.
+ *
+ * The ≈ and the rounding are ONE decision, so a rounded figure always admits it:
+ * only a band wider than the step gets both, and a narrower one keeps its exact
+ * number, which the rounding would move further than the band is wide. `width`
+ * is null exactly when `band` would do no more than repeat the figure.
+ */
+export function bestEstimate(value, digits = 0) {
+  if (!value || value.mid === null || value.mid === undefined) {
+    return { figure: '—', width: null }
+  }
+
+  const spread = Math.abs(Number(value.max ?? value.mid) - Number(value.min ?? value.mid))
+  const exact = num(value.mid, digits)
+  const width = band(value, digits)
+
+  return {
+    figure: spread > ESTIMATE_STEP
+      ? `≈ ${num(Math.round(Number(value.mid) / ESTIMATE_STEP) * ESTIMATE_STEP, digits)}`
+      : exact,
+    width: width === exact ? null : width,
+  }
 }
 
 export function isBanded(value) {

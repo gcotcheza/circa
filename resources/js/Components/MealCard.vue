@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { band, num, shareLabel } from '../lib/format'
+import { bestEstimate, num, shareLabel } from '../lib/format'
 
 /**
  * One logged meal: when, what, and how much — the "how much" kept as a band per
@@ -41,6 +41,10 @@ const statusClasses = {
   failed: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300',
 }
 
+// The meal's energy as one figure to read, its width kept underneath: the top of
+// "588–857" was read as the likely number and meals skipped to make room for it.
+const kcal = computed(() => bestEstimate(props.meal.kcal))
+
 // Courses still waiting on the model or a tap. A CONFIRMED meal can hold an
 // unconfirmed proposal — photograph the dessert after logging the main course and
 // both live on the same meal. `meal.status` stays `confirmed` throughout so the
@@ -79,8 +83,16 @@ const shownItems = computed(() => {
         </span>
       </div>
 
-      <span v-if="meal.status !== 'analyzing'" class="tnum shrink-0 text-sm font-semibold">
-        {{ band(meal.kcal) }}<span class="ml-1 text-xs font-normal text-stone-500">kcal</span>
+      <span v-if="meal.status !== 'analyzing'" class="shrink-0 text-right">
+        <span class="tnum text-sm font-semibold">
+          {{ kcal.figure }}<span class="ml-1 text-xs font-normal text-stone-500">kcal</span>
+        </span>
+        <span
+          v-if="kcal.width"
+          class="tnum block text-[11px] font-normal text-stone-400 dark:text-stone-500"
+        >
+          {{ kcal.width }}
+        </span>
       </span>
     </div>
 

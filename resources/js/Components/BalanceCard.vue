@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { anchorWord, heroFigure, meter, meterLabel, paceNote, rangeLine } from '../lib/balance'
-import { band, num, percent } from '../lib/format'
+import { bestEstimate, num, percent } from '../lib/format'
 import HonestyChip from './HonestyChip.vue'
 
 /**
@@ -163,13 +163,17 @@ const overBar = computed(() => bar(geometry.value?.over, 'left'))
 /**
  * The two totals, as a legend. They used to swap sides because they named the
  * ends of a track; the meter has a centre instead, so the order is fixed now —
- * eaten first, as the card says them everywhere else.
+ * eaten first, as the card says them everywhere else. The eaten figure is the
+ * hero's own idiom one size down: the estimate, then its width in brackets.
  */
+const eaten = computed(() => bestEstimate(kcalIn.value))
+
 const ends = computed(() => [
   {
     key: 'intake',
     label: 'Eaten',
-    value: band(kcalIn.value),
+    figure: eaten.value.figure,
+    width: eaten.value.width,
     dot: 'bg-teal-500 dark:bg-teal-400',
   },
   {
@@ -177,7 +181,9 @@ const ends = computed(() => [
     // "so far" only under a projection, whose burn is a whole day and this one
     // is not; without it the two numbers look like one quantity disagreeing.
     label: projection.value ? 'Burned so far' : 'Burned',
-    value: num(kcalOut.value),
+    figure: num(kcalOut.value),
+    // A measured burn is not a band, so there is no width to put beside it.
+    width: null,
     dot: 'bg-orange-500 dark:bg-orange-400',
   },
 ])
@@ -339,7 +345,8 @@ const revealKey = computed(() =>
         <span v-for="end in ends" :key="end.key" class="inline-flex items-center gap-1.5">
           <span class="size-1.5 shrink-0 rounded-full" :class="end.dot" />
           <span class="text-stone-500 dark:text-stone-400">{{ end.label }}</span>
-          <span class="tnum font-medium text-stone-700 dark:text-stone-200">{{ end.value }}</span>
+          <span class="tnum font-medium text-stone-700 dark:text-stone-200">{{ end.figure }}</span>
+          <span v-if="end.width" class="tnum text-stone-400 dark:text-stone-500">({{ end.width }})</span>
         </span>
       </div>
 

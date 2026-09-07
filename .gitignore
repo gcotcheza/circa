@@ -32,3 +32,6 @@ Thumbs.db
 
 # Local-only compose overrides (host ports, debug tooling)
 /docker-compose.override.yml
+
+# Claude Code's per-machine permissions file: local by definition, never shared
+/.claude/settings.local.json

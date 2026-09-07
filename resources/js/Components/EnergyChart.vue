@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { band, num } from '../lib/format'
+import { bestEstimate, num } from '../lib/format'
 
 /**
  * Intake against expenditure, per day: two bars, side by side, one baseline.
@@ -171,10 +171,12 @@ function summary(day) {
 
   parts.push(day.kcalOut === null ? 'burn not measured' : `burned ${num(day.kcalOut)}`)
 
+  const eaten = bestEstimate(day.kcalIn)
+
   parts.push(
     day.kcalIn.mid === null
       ? 'no food logged'
-      : `eaten ${band(day.kcalIn)}${day.isCompleteLog ? '' : ' so far'}`
+      : `eaten ${eaten.figure}${eaten.width ? ` (${eaten.width})` : ''}${day.isCompleteLog ? '' : ' so far'}`
   )
 
   if (day.balance) {

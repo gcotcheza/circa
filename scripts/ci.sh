@@ -13,6 +13,9 @@
 #   scripts/ci.sh --checks-only          # just pint + audits + phpstan + eslint
 #   scripts/ci.sh --no-checks            # tests only, skip the checks
 #
+# CI_PROJECT renames the compose project, CI_APP_IMAGE the image, CI_GIT the git
+# command — a caller whose own git cannot read this checkout passes one.
+#
 # A full run is SIX gates, and any one of them failing fails the run. They run
 # in THIS order, which is the order of the `say` banners below: npm advisories,
 # front-end lint (eslint), the node unit tests, code style (pint), composer
@@ -38,6 +41,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 COMPOSE_FILE="${REPO_ROOT}/docker-compose.ci.yml"
+
+# CI_GIT is a COMMAND WITH ARGUMENTS, so $GIT is unquoted on purpose; it carries
+# its own -C, so no call site below adds one.
+GIT=${CI_GIT:-git}
 
 # --- Output --------------------------------------------------------------
 if [[ -t 1 ]]; then
@@ -77,7 +84,7 @@ while [[ $# -gt 0 ]]; do
         --no-checks)       NO_CHECKS=1 ;;
         --checks-only)     CHECKS_ONLY=1 ;;
         -h|--help)
-            sed -n '2,24p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            sed -n '2,27p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         --) shift; TEST_ARGS+=("$@"); break ;;
@@ -87,11 +94,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 # --- Git plumbing --------------------------------------------------------
-command -v git >/dev/null 2>&1 || die 'git is not on PATH.'
+command -v "${GIT%% *}" >/dev/null 2>&1 || die "${GIT%% *} is not on PATH."
 cd "${REPO_ROOT}"
 
-BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-[[ "${BRANCH}" == 'HEAD' ]] && BRANCH="detached-$(git rev-parse --short HEAD)"
+BRANCH="$($GIT rev-parse --abbrev-ref HEAD)"
+[[ "${BRANCH}" == 'HEAD' ]] && BRANCH="detached-$($GIT rev-parse --short HEAD)"
 
 # --- Which gates are we running ------------------------------------------
 # The checks (pint, the two advisory scans, phpstan, eslint) look at the whole
