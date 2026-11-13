@@ -18,6 +18,8 @@ use App\Services\Rollup\DailySummaryBuilder;
  */
 final class RebuildDailySummariesCommand extends Command
 {
+    use ReadsTextInput;
+
     protected $signature = 'summaries:rebuild
                             {--date= : A single local date (YYYY-MM-DD)}
                             {--from= : First local date}
@@ -82,8 +84,8 @@ final class RebuildDailySummariesCommand extends Command
      */
     private function dates(): array
     {
-        if ($this->option('date') !== null) {
-            return [CarbonImmutable::parse((string) $this->option('date'))->toDateString()];
+        if (($date = $this->textOptionOrNull('date')) !== null) {
+            return [CarbonImmutable::parse($date)->toDateString()];
         }
 
         $query = DB::query()->fromSub(
@@ -93,12 +95,12 @@ final class RebuildDailySummariesCommand extends Command
             'dates'
         )->select('d')->orderBy('d');
 
-        if ($this->option('from') !== null) {
-            $query->where('d', '>=', CarbonImmutable::parse((string) $this->option('from'))->toDateString());
+        if (($from = $this->textOptionOrNull('from')) !== null) {
+            $query->where('d', '>=', CarbonImmutable::parse($from)->toDateString());
         }
 
-        if ($this->option('to') !== null) {
-            $query->where('d', '<=', CarbonImmutable::parse((string) $this->option('to'))->toDateString());
+        if (($to = $this->textOptionOrNull('to')) !== null) {
+            $query->where('d', '<=', CarbonImmutable::parse($to)->toDateString());
         }
 
         return array_values($query->pluck('d')

@@ -14,6 +14,8 @@ use Illuminate\Console\Command;
  */
 final class GeneratePwaIconsCommand extends Command
 {
+    use ReadsTextInput;
+
     protected $signature = 'pwa:icons {--dir= : Output directory (default public/icons)}';
 
     protected $description = 'Draw the PWA icon set (SVG master + PNGs) from one geometry definition';
@@ -58,7 +60,7 @@ final class GeneratePwaIconsCommand extends Command
             return self::FAILURE;
         }
 
-        $dir = (string) ($this->option('dir') ?? '') ?: public_path('icons');
+        $dir = $this->textOptionOrNull('dir') ?: public_path('icons');
 
         if (! is_dir($dir) && ! mkdir($dir, 0o755, true) && ! is_dir($dir)) {
             $this->error("Could not create {$dir}.");

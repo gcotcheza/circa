@@ -22,6 +22,8 @@ use App\Services\Vision\StoredAnswer;
  */
 final class RelinkPhotoProvenanceCommand extends Command
 {
+    use ReadsTextInput;
+
     protected $signature = 'vision:relink
                             {meal : The meal uuid}
                             {--apply : Write the restored links instead of only showing them}';
@@ -30,7 +32,7 @@ final class RelinkPhotoProvenanceCommand extends Command
 
     public function handle(): int
     {
-        $uuid = (string) $this->argument('meal');
+        $uuid = $this->textArgument('meal');
 
         // `meals.uuid` is a Postgres uuid column, so a typo reaches the driver
         // as a cast error rather than as "not found". Answered here instead.
