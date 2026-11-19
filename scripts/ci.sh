@@ -94,7 +94,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # --- Git plumbing --------------------------------------------------------
-command -v "${GIT%% *}" >/dev/null 2>&1 || die "${GIT%% *} is not on PATH."
+command -v git >/dev/null 2>&1 || die "git is not on PATH."
 cd "${REPO_ROOT}"
 
 BRANCH="$($GIT rev-parse --abbrev-ref HEAD)"
