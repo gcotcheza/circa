@@ -29,6 +29,8 @@ use App\Services\Vision\ProposedItemMapper;
  */
 final class ReprojectProposalCommand extends Command
 {
+    use ReadsTextInput;
+
     protected $signature = 'vision:reproject
                             {meal : The meal uuid}
                             {--apply : Write the rebuilt items instead of only showing them}
@@ -38,7 +40,7 @@ final class ReprojectProposalCommand extends Command
 
     public function handle(ProposedItemMapper $mapper): int
     {
-        $uuid = (string) $this->argument('meal');
+        $uuid = $this->textArgument('meal');
 
         // `meals.uuid` is a Postgres uuid column: a typo would otherwise
         // reach the driver as a cast error.

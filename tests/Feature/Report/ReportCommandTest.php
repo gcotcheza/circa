@@ -203,7 +203,7 @@ final class ReportCommandTest extends TestCase
     }
 
     /** Event::$timezone is set as a string everywhere this app schedules a command. */
-    private function timezoneName(DateTimeZone|string $timezone): string
+    private function timezoneName(DateTimeZone|string|null $timezone): ?string
     {
         return $timezone instanceof DateTimeZone ? $timezone->getName() : $timezone;
     }

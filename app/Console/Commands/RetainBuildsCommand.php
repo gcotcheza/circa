@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\File;
  */
 final class RetainBuildsCommand extends Command
 {
+    use ReadsTextInput;
+
     protected $signature = 'build:retain
                             {--keep=3 : How many builds to keep, counting the current one}
                             {--dir= : Build directory (default public/build)}
@@ -29,7 +31,7 @@ final class RetainBuildsCommand extends Command
 
     public function handle(): int
     {
-        $dir = (string) ($this->option('dir') ?? '') ?: public_path('build');
+        $dir = $this->textOptionOrNull('dir') ?: public_path('build');
 
         $keep = max(1, (int) $this->option('keep'));
 

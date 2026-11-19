@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use LogicException;
 use App\Models\User;
 use Illuminate\Support\Str;
 use Illuminate\Database\Seeder;
@@ -31,18 +32,18 @@ final class SingleUserSeeder extends Seeder
 
     public function run(): void
     {
+        // The generated password is printed once and stored nowhere: no console, no write.
+        $command = $this->command
+            ?? throw new LogicException('SingleUserSeeder must run under artisan (db:seed): it prints the generated password.');
+
         $email = (string) config('seeding.user_email');
         $name = (string) config('seeding.user_name');
         $supplied = config('seeding.user_password');
 
         $existing = User::query()->where('email', $email)->first();
 
-        // `$this->command` is set only when the seeder runs under artisan
-        // (`db:seed`, `migrate --seed`) — the framework's own Seeder::call() guards
-        // the same property. This class has no other caller; if one appears,
-        // bring the nullsafe back rather than letting it fatal.
         if ($existing !== null && $supplied === null) {
-            $this->command->info("User {$email} already exists; password left unchanged.");
+            $command->info("User {$email} already exists; password left unchanged.");
 
             return;
         }
@@ -62,14 +63,14 @@ final class SingleUserSeeder extends Seeder
             ]
         );
 
-        $this->command->newLine();
-        $this->command->info(sprintf('User %s <%s> is ready.', $name, $email));
+        $command->newLine();
+        $command->info(sprintf('User %s <%s> is ready.', $name, $email));
 
         if (! is_string($supplied)) {
-            $this->command->warn('Generated password (shown once, stored nowhere):');
-            $this->command->line('  '.$password);
+            $command->warn('Generated password (shown once, stored nowhere):');
+            $command->line('  '.$password);
         }
 
-        $this->command->newLine();
+        $command->newLine();
     }
 }

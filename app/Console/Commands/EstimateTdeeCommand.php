@@ -20,6 +20,8 @@ use App\Services\Tdee\CollectingData;
  */
 final class EstimateTdeeCommand extends Command
 {
+    use ReadsTextInput;
+
     protected $signature = 'tdee:estimate
                             {--date= : Treat this local date as "today" (default: today)}
                             {--dry-run : Compute and print, write nothing}';
@@ -30,9 +32,10 @@ final class EstimateTdeeCommand extends Command
     {
         $tz = (string) config('health.timezone');
 
-        $today = $this->option('date') === null
+        $date = $this->textOptionOrNull('date');
+        $today = $date === null
             ? CarbonImmutable::now($tz)
-            : CarbonImmutable::parse((string) $this->option('date'), $tz);
+            : CarbonImmutable::parse($date, $tz);
 
         $window = TdeeWindow::current($today);
 
