@@ -532,7 +532,7 @@ Fix the code. For a genuine analyzer limitation you can name, add an inline
 reader will see it.
 
 The baseline is `ignoreErrors: []` and stays that way: NEVER --generate-baseline
-to get green. See CLAUDE.md's Comments section.
+to get green. See the Comments section of CLAUDE.md.
 EOF
 )"
     fi
