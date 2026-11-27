@@ -9,7 +9,9 @@ suite in `tests/` (PHP) and `tests/js/` (node).
 `scripts/ci.sh` runs the whole gate — eslint, the node tests, Pint, dependency
 advisories, PHPStan, then the PHP suite — in a throwaway compose stack of its
 own. Pass a `--filter` or a path to iterate on one test; `--checks-only` runs
-just the static checks. It needs Docker and nothing else.
+just the static checks. It needs Docker and nothing else. A full run appends
+its `<sha> ci <utc> <rc> -` row to `GATE_LEDGER`. A change to `scripts/ci.sh`
+or `docker-compose.ci.yml` runs `bash scripts/tests/ci-gate.sh` (no Docker).
 
 ## Comments
 Compact why-comments: every constraint or invariant the code cannot show, each

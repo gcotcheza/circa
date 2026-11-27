@@ -1,5 +1,7 @@
 # Decisions
 
+> Newer decisions are one file each in docs/decisions/, until the change that adds the 10th folds them in at the bottom of this file (W7).
+
 The engineering *why*: how this repository is built, gated and kept honest, when
 the reason is too long to live in a comment. It is a different file from
 `docs/rationale-app.md`, `docs/rationale-data.md` and
@@ -12,9 +14,9 @@ points at.
 ---
 
 ### the-gate-checks-dependency-advisories
-`composer audit --locked --no-dev` and `npm audit --omit=dev --audit-level=high` are `scripts/ci.sh`'s advisory checks, and they sit in two different places on purpose. The composer half is inside the container block, directly after Pint: `--locked` reads `composer.lock` rather than the installed tree, so it is seconds of parsing plus one advisory lookup and belongs among the cheap checks. The npm half sits immediately before ESLint, in the front-end block that runs before the stack exists at all — it is the first step that needs `node_modules`, and pairing it with the composer half would put a cold `npm ci` ahead of a 90-second phpstan run for no gain.
+`composer audit --locked --no-dev` and `npm audit --audit-level=high` are `scripts/ci.sh`'s advisory checks, and they sit in two different places on purpose. The composer half is inside the container block, directly after Pint: `--locked` reads `composer.lock` rather than the installed tree, so it is seconds of parsing plus one advisory lookup and belongs among the cheap checks. The npm half sits immediately before ESLint, in the front-end block that runs before the stack exists at all — it is the first step that needs `node_modules`, and pairing it with the composer half would put a cold `npm ci` ahead of a 90-second phpstan run for no gain.
 
-Both are scoped to what production actually installs. `--no-dev` and `--omit=dev` keep phpunit, pint, larastan, vite and eslint out of the result: an advisory against a package no user can be reached through would redden the gate for something unfixable-by-design and teach people to skip the step.
+The composer half is scoped to what production actually installs: `--no-dev` keeps phpunit, pint and larastan out of the result. The npm half is not, and no longer carries `--omit=dev`: see the-npm-audit-covers-dev-packages.
 
 ABANDONMENT IS REPORTED, NOT FAILED. `composer audit`'s own default for an abandoned package is `fail` (`composer config audit.abandoned` answers `fail`; composer 2.10 here), and an abandoned package is not a vulnerability: nobody can fix it the afternoon it is announced, because the fix is choosing a replacement library. Left at the default, the first abandonment in the production `require` block would redden every branch on the repository under a message that says "advisory", which is both false and unactionable — and a gate that is red for a reason nobody can clear is a gate people learn to skip. So the call carries `--abandoned=report`: the abandonment is printed where the next person reading the gate output will see it, and the run continues. The stricter setting exists and was declined deliberately; `--abandoned=fail` is one word away for whoever decides the noise is worth it.
 

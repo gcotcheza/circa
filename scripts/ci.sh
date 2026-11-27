@@ -13,8 +13,8 @@
 #   scripts/ci.sh --checks-only          # just pint + audits + phpstan + eslint
 #   scripts/ci.sh --no-checks            # tests only, skip the checks
 #
-# CI_PROJECT renames the compose project, CI_APP_IMAGE the image, CI_GIT the git
-# command — a caller whose own git cannot read this checkout passes one.
+# CI_PROJECT renames the compose project, CI_GIT the git command — a caller whose
+# own git cannot read this checkout passes one. GATE_LEDGER moves the result file.
 #
 # A full run is SIX gates, and any one of them failing fails the run. They run
 # in THIS order, which is the order of the `say` banners below: npm advisories,
@@ -123,6 +123,41 @@ elif [[ "${#TEST_ARGS[@]}" -gt 0 ]]; then
     CHECKS_SKIPPED_FOR_ARGS=1
 fi
 
+# --- The gate ledger -----------------------------------------------------
+# One `<sha> ci <utc> <rc> -` row per full run, keyed by the commit it judged;
+# a partial run records nothing. decision: the-gate-records-its-result-by-commit
+GATE_LEDGER="${GATE_LEDGER:-/var/lib/fleet/gate-ledger}"
+FULL_RUN=0
+[[ "${RUN_CHECKS}" -eq 1 && "${TESTS_WANTED}" -eq 1 && "${NO_ASSETS}" -eq 0 \
+    && "${SHELL_ONLY}" -eq 0 && "${ASSETS_ONLY}" -eq 0 ]] && FULL_RUN=1
+ARMED_SHA="$($GIT rev-parse HEAD)"
+
+# shellcheck disable=SC2329  # invoked indirectly, by teardown on EXIT.
+gate_ledger_record() {
+    local rc=$1 sha top porcelain
+    [[ "${FULL_RUN}" -eq 1 ]] || return 0
+    top="$($GIT rev-parse --show-toplevel 2>/dev/null || true)"
+    if [[ -z "${top}" || "$(cd -- "${top}" 2>/dev/null && pwd -P)" != "$(cd -- "${REPO_ROOT}" && pwd -P)" ]]; then
+        warn "gate-ledger: git reads ${top:-no checkout}, not ${REPO_ROOT}, so this run (rc=${rc}) is NOT recorded"
+        return 0
+    fi
+    sha="$($GIT rev-parse HEAD 2>/dev/null || true)"
+    if [[ -z "${sha}" || "${sha}" != "${ARMED_SHA}" ]]; then
+        warn "gate-ledger: HEAD is ${sha:-unreadable} but the run began at ${ARMED_SHA}, so this run (rc=${rc}) is NOT recorded"
+        return 0
+    fi
+    porcelain="$($GIT --no-optional-locks status --porcelain 2>/dev/null)" || {
+        warn "gate-ledger: git could not read the tree, so this run (rc=${rc}) is NOT recorded"
+        return 0
+    }
+    [[ -z "${porcelain}" ]] || sha="${sha}-dirty"
+    printf '%s ci %s %s -\n' "${sha}" "$(date -u +%FT%TZ)" "${rc}" 2>/dev/null >>"${GATE_LEDGER}" || {
+        warn "gate-ledger: cannot append to ${GATE_LEDGER} as $(id -un), so this run (rc=${rc}) is NOT recorded"
+        return 0
+    }
+    say "gate-ledger: ${sha:0:7} ci rc=${rc} -> ${GATE_LEDGER}"
+}
+
 # --- Compose project name ------------------------------------------------
 # The project name is what makes two stacks two stacks: compose derives the
 # container names, the network name and the volume names from it. Derived from
@@ -138,7 +173,7 @@ sanitize() {
         | tr '[:upper:]' '[:lower:]' \
         | sed -e 's/[^a-z0-9_-]\+/-/g' -e 's/^[^a-z0-9]\+//' -e 's/-\+$//'
 }
-PROJECT="${CI_PROJECT:-ht-ci-$(sanitize "${BRANCH}")}"
+PROJECT="${CI_PROJECT:-circa-ci-$(sanitize "${BRANCH}")}"
 
 # `docker compose -p <project> -f <file>` and NOTHING else. Naming the file
 # explicitly is what stops compose from also merging docker-compose.yml and
@@ -186,7 +221,7 @@ run_js_tests() {
 # node_modules, and a cold `npm ci` must not precede phpstan. docs/DECISIONS.md
 run_js_audit() {
     docker compose -p "${PROJECT}" -f "${COMPOSE_FILE}" --profile assets run --rm assets \
-        sh -c '[ -d node_modules ] || npm ci --no-audit --fund=false && npm audit --omit=dev --audit-level=high'
+        sh -c '[ -d node_modules ] || npm ci --no-audit --fund=false && npm audit --audit-level=high'
 }
 
 # --- The front-end lint --------------------------------------------------
@@ -229,6 +264,7 @@ fi
 # shellcheck disable=SC2329  # invoked indirectly, by `trap teardown EXIT` below.
 teardown() {
     local code=$?
+    gate_ledger_record "${code}"
     if [[ "${KEEP}" -eq 1 ]]; then
         echo
         say "stack left running (--keep). Next run reuses it; tear it down with:"
@@ -255,7 +291,7 @@ fi
 if [[ "${NO_MEM_CHECK}" -eq 0 ]] && command -v free >/dev/null 2>&1; then
     AVAIL_MB="$(free -m | awk '/^Mem:/ {print $7}')"
     OTHERS="$(docker ps --format '{{.Label "com.docker.compose.project"}}' 2>/dev/null \
-                | grep '^ht-ci-' | sort -u | grep -cvxF "${PROJECT}" || true)"
+                | grep '^circa-ci-' | sort -u | grep -cvxF "${PROJECT}" || true)"
     note "memory available ${AVAIL_MB} MB, other CI stacks up: ${OTHERS}"
 
     if [[ "${OTHERS}" -ge 2 ]]; then
@@ -267,7 +303,7 @@ if [[ "${NO_MEM_CHECK}" -eq 0 ]] && command -v free >/dev/null 2>&1; then
     if [[ "${AVAIL_MB}" -lt 600 ]]; then
         warn "only ${AVAIL_MB} MB available — a CI stack wants ~400 MB and there is no swap."
         warn 'Something serving traffic may be OOM-killed. Tear down an idle stack first:'
-        warn '  docker compose ls | grep ht-ci-'
+        warn '  docker compose ls | grep circa-ci-'
     fi
 fi
 
@@ -282,9 +318,9 @@ docker volume inspect ht-ci-composer-cache >/dev/null 2>&1 \
     || { say 'creating shared composer cache volume'; docker volume create ht-ci-composer-cache >/dev/null; }
 
 # --- Image ---------------------------------------------------------------
-# `health-tracker/app:ci`, never `:latest` — see docker-compose.ci.yml. The
-# Dockerfile is identical to production's, so this is a layer-cache hit.
-CI_IMAGE="${CI_APP_IMAGE:-health-tracker/app:ci}"
+# `circa/app:ci`, never production's `health-tracker/app:latest`; a literal in
+# docker-compose.ci.yml with no override knob. decision: the-gate-has-a-tag-of-its-own
+CI_IMAGE=circa/app:ci
 # Always build: a layer-cache hit costs about a second, and a gate that reused
 # an existing image never exercised a Dockerfile change (audit C1's root fix
 # lived only in the Dockerfile). --rebuild drops the cache as well.
@@ -338,7 +374,7 @@ if [[ "${NO_ASSETS}" -eq 0 ]] && [[ "${RUN_CHECKS}" -eq 1 ]]; then
 the node advisory step failed (exit ${AUDIT_STATUS}) — the install or the audit.
 
 The step is \`[ -d node_modules ] || npm ci … && npm audit …\`, so this is either
-a High/Critical advisory against a production package or an \`npm ci\` that never
+a High/Critical advisory against any package, dev ones included, or an \`npm ci\` that never
 got as far as auditing. The output above says which. See docs/DECISIONS.md.
 EOF
 )"
