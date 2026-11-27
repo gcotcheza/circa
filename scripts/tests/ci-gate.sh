@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Cases for scripts/ci.sh's npm audit flags, its result row and its image tag, run
-# on a copy in a throwaway repo with docker stubbed out: bash scripts/tests/ci-gate.sh
+# Cases for scripts/ci.sh's npm audit, result row, image tag, self-test step and memory
+# guard, run on a copy in a throwaway repo with docker stubbed out. ci.sh runs this first.
 set -uo pipefail
 
 HERE="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,7 +24,9 @@ docker() {
         *'artisan test'*)
             [[ -z "${STUB_MOVE_HEAD:-}" ]] \
                 || git -C "${STUB_MOVE_HEAD}" -c user.name=fixture -c user.email=fixture@example.invalid commit -q --allow-empty -m moved
+            printf '%s\n' "${STUB_SUITE_SAYS-  Tests:    7 passed (9 assertions)}"
             return "${STUB_SUITE_RC:-0}" ;;
+        'ps --format'*) [[ -z "${STUB_PS:-}" ]] || tr ' ' '\n' <<<"${STUB_PS}" ;;
         *psql*) echo 1 ;;
         *'grep -q'*) return 1 ;;
     esac
@@ -33,11 +35,15 @@ docker() {
 export -f docker
 
 REPO="${WORK}/repo"
-mkdir -p "${REPO}/scripts"
+mkdir -p "${REPO}/scripts/tests"
 cp -- "${CI_SH}" "${REPO}/scripts/ci.sh"
 cp -- "${CI_COMPOSE}" "${REPO}/docker-compose.ci.yml"
+# The copy runs this stand-in, never this file, so it cannot recurse.
+# shellcheck disable=SC2016  # the stand-in expands these, not this script
+printf '%s\n' 'printf "%s\n" "${STUB_SELF_SAYS-1 passed, 0 failed}"' 'exit "${STUB_SELF_RC:-0}"' \
+    >"${REPO}/scripts/tests/ci-gate.sh"
 git init -q "${REPO}"
-git -C "${REPO}" add scripts/ci.sh docker-compose.ci.yml
+git -C "${REPO}" add scripts/ci.sh scripts/tests/ci-gate.sh docker-compose.ci.yml
 git -C "${REPO}" -c user.name=fixture -c user.email=fixture@example.invalid commit -q -m fixture
 HEAD_SHA="$(git -C "${REPO}" rev-parse HEAD)"
 
@@ -89,6 +95,31 @@ check 'the gate app image is a tag of its own, never production'"'"'s' gate_tag_
 check 'the gate builds from docker-compose.ci.yml and never names a production file or :latest' \
     gate_never_names_production_files
 
+for flag in --no-assets --checks-only --shell --assets-only; do
+    run_gate "partial${flag}" 0 "${flag}"
+    check "a ${flag} run records nothing" test "$(rows_in "partial${flag}")" -eq 0
+done
+
+STUB_SUITE_SAYS='' run_gate empty 0
+check 'an empty suite that exits 0 fails the run' test "$(rc_of empty)" -ne 0
+check 'an empty suite that exits 0 records 1, never 0' row_is empty "${HEAD_SHA}" 1
+GATE_SUITE_PASSED=1 STUB_SUITE_SAYS='' run_gate inherited 0
+check 'an inherited GATE_SUITE_PASSED does not clear an empty suite' row_is inherited "${HEAD_SHA}" 1
+
+STUB_SELF_RC=1 run_gate self_failed 0
+check 'a failing scripts/tests/ci-gate.sh fails the run and records 1' row_is self_failed "${HEAD_SHA}" 1
+STUB_SELF_SAYS='' run_gate self_silent 0
+check 'a scripts/tests/ci-gate.sh that exits 0 with no verdict line records 1' row_is self_silent "${HEAD_SHA}" 1
+mv -- "${REPO}/scripts/tests/ci-gate.sh" "${WORK}/self-test.away"
+run_gate self_missing 0
+mv -- "${WORK}/self-test.away" "${REPO}/scripts/tests/ci-gate.sh"
+check 'a missing scripts/tests/ci-gate.sh fails the run' \
+    grep -qF 'scripts/tests/ci-gate.sh is missing or failed' -- "${WORK}/self_missing.out"
+
+STUB_LOG="${WORK}/mem.log" STUB_PS='ht-ci-one ht-ci-two' GATE_LEDGER="${WORK}/mem.ledger" CI_GIT='' CI_PROJECT='' \
+    bash "${REPO}/scripts/ci.sh" --checks-only >"${WORK}/mem.out" 2>&1
+check 'the memory guard counts HT gate stacks toward the limit' grep -qF 'other CI stacks up: 2' -- "${WORK}/mem.out"
+
 printf 'untracked\n' >"${REPO}/stray"
 run_gate dirty 0
 check 'a dirty tree is recorded as <sha>-dirty' row_is dirty "${HEAD_SHA}-dirty" 0
@@ -102,4 +133,4 @@ STUB_MOVE_HEAD="${REPO}" run_gate moved 0
 check 'a run whose HEAD moved under it records nothing' test "$(rows_in moved)" -eq 0
 
 printf '%d passed, %d failed\n' "${PASSED}" "${FAILED}"
-[[ "${FAILED}" -eq 0 && "${PASSED}" -eq 11 ]]
+[[ "${FAILED}" -eq 0 && "${PASSED}" -eq 22 ]]

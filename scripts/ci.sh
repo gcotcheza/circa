@@ -16,8 +16,9 @@
 # CI_PROJECT renames the compose project, CI_GIT the git command — a caller whose
 # own git cannot read this checkout passes one. GATE_LEDGER moves the result file.
 #
-# A full run is SIX gates, and any one of them failing fails the run. They run
-# in THIS order, which is the order of the `say` banners below: npm advisories,
+# A full run is SEVEN gates, and any one of them failing fails the run. They run
+# in THIS order, which is the order of the `say` banners below: this script's
+# own cases (scripts/tests/ci-gate.sh, on the host), npm advisories,
 # front-end lint (eslint), the node unit tests, code style (pint), composer
 # advisories, static analysis (phpstan), then the PHP suite. The front-end half
 # comes first because it needs no database and no stack. The checks are skipped
@@ -131,6 +132,8 @@ FULL_RUN=0
 [[ "${RUN_CHECKS}" -eq 1 && "${TESTS_WANTED}" -eq 1 && "${NO_ASSETS}" -eq 0 \
     && "${SHELL_ONLY}" -eq 0 && "${ASSETS_ONLY}" -eq 0 ]] && FULL_RUN=1
 ARMED_SHA="$($GIT rev-parse HEAD)"
+# Set only once the suite counted a passed test; inherited, it would clear an empty one.
+unset GATE_SUITE_PASSED
 
 # shellcheck disable=SC2329  # invoked indirectly, by teardown on EXIT.
 gate_ledger_record() {
@@ -264,6 +267,8 @@ fi
 # shellcheck disable=SC2329  # invoked indirectly, by `trap teardown EXIT` below.
 teardown() {
     local code=$?
+    [[ "${code}" -eq 0 && "${FULL_RUN}" -eq 1 && "${GATE_SUITE_PASSED:-0}" -ne 1 ]] \
+        && { warn 'exit 0 with no passed test counted behind it, so this run is a failure'; code=1; }
     gate_ledger_record "${code}"
     if [[ "${KEEP}" -eq 1 ]]; then
         echo
@@ -291,7 +296,7 @@ fi
 if [[ "${NO_MEM_CHECK}" -eq 0 ]] && command -v free >/dev/null 2>&1; then
     AVAIL_MB="$(free -m | awk '/^Mem:/ {print $7}')"
     OTHERS="$(docker ps --format '{{.Label "com.docker.compose.project"}}' 2>/dev/null \
-                | grep '^circa-ci-' | sort -u | grep -cvxF "${PROJECT}" || true)"
+                | grep -E '^(ht|circa)-ci-' | sort -u | grep -cvxF "${PROJECT}" || true)"
     note "memory available ${AVAIL_MB} MB, other CI stacks up: ${OTHERS}"
 
     if [[ "${OTHERS}" -ge 2 ]]; then
@@ -303,11 +308,26 @@ if [[ "${NO_MEM_CHECK}" -eq 0 ]] && command -v free >/dev/null 2>&1; then
     if [[ "${AVAIL_MB}" -lt 600 ]]; then
         warn "only ${AVAIL_MB} MB available — a CI stack wants ~400 MB and there is no swap."
         warn 'Something serving traffic may be OOM-killed. Tear down an idle stack first:'
-        warn '  docker compose ls | grep circa-ci-'
+        warn '  docker compose ls | grep -E "^(ht|circa)-ci-"'
     fi
 fi
 
 trap teardown EXIT
+
+# --- This script's own cases, on the host --------------------------------
+# Plain bash and git against a stubbed docker in a temp repo: seconds, so it goes first.
+# Its last line is the claim, because an emptied or half-run file also exits 0.
+if [[ "${RUN_CHECKS}" -eq 1 ]]; then
+    echo
+    say "the gate's own cases (bash scripts/tests/ci-gate.sh, on the host)"
+    echo
+    SELF_TEST_RC=0
+    SELF_TEST_OUT="$(bash -- "${SCRIPT_DIR}/tests/ci-gate.sh" 2>&1)" || SELF_TEST_RC=$?
+    printf '%s\n' "${SELF_TEST_OUT}"
+    [[ "${SELF_TEST_RC}" -eq 0 ]] || die "scripts/tests/ci-gate.sh is missing or failed (exit ${SELF_TEST_RC}); its output above names the case."
+    [[ "$(tail -n 1 <<<"${SELF_TEST_OUT}")" =~ ^[1-9][0-9]*\ passed,\ 0\ failed$ ]] \
+        || die "scripts/tests/ci-gate.sh exited 0 without its closing 'N passed, 0 failed' line, so it did not finish its list."
+fi
 
 # --- The shared composer cache -------------------------------------------
 # Checkouts do NOT share vendor/ — each gets its own, installed from its own
@@ -590,10 +610,19 @@ else
 fi
 echo
 
+SUITE_OUT="$(mktemp)"
 set +e
-dc exec -T app php artisan test "${TEST_ARGS[@]}"
-STATUS=$?
+dc exec -T app php artisan test "${TEST_ARGS[@]}" 2>&1 | tee -- "${SUITE_OUT}"
+STATUS=${PIPESTATUS[0]}
 set -e
+
+# PHPUnit exits 0 on an empty suite, so a row may say 0 only with a passed count above 0.
+SUITE_PASSED="$(LC_ALL=C sed $'s/\033\\[[0-9;?]*[ -/]*[@-~]//g' "${SUITE_OUT}" \
+    | grep -E '^[[:space:]]*Tests:' | tail -n 1 | sed -n 's/.*[^0-9]\([0-9][0-9]*\) passed.*/\1/p' || true)"
+rm -f -- "${SUITE_OUT}"
+[[ "${STATUS}" -eq 0 && "${SUITE_PASSED:-0}" -gt 0 ]] && GATE_SUITE_PASSED=1
+[[ "${STATUS}" -ne 0 || "${GATE_SUITE_PASSED:-0}" -eq 1 ]] \
+    || warn "the test runner printed no 'Tests: N passed' line with N above 0, so this run judged nothing"
 
 echo
 if [[ "${STATUS}" -eq 0 ]]; then
