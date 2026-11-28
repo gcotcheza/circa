@@ -6,10 +6,12 @@ the Vue front end in `resources/js/`, schema in `database/migrations/`, and the
 suite in `tests/` (PHP) and `tests/js/` (node).
 
 ## Tests
-`scripts/ci.sh` runs the whole gate — eslint, the node tests, Pint, dependency
-advisories, PHPStan, then the PHP suite — in a throwaway compose stack of its
-own. Pass a `--filter` or a path to iterate on one test; `--checks-only` runs
-just the static checks. It needs Docker and nothing else.
+`scripts/ci.sh` runs the whole gate — its own cases on the host, eslint, the
+node tests, Pint, dependency advisories, PHPStan, then the PHP suite — in a
+throwaway compose stack of its own. Pass a `--filter` or a path to iterate on
+one test; `--checks-only` runs just the static checks. It needs Docker, bash and
+git. To iterate on `scripts/ci.sh` or `docker-compose.ci.yml`, run
+`bash scripts/tests/ci-gate.sh` (no Docker).
 
 ## Comments
 Compact why-comments: every constraint or invariant the code cannot show, each

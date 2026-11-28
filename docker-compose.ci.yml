@@ -8,7 +8,7 @@
 # It is never `up`-ed by hand. `scripts/ci.sh` drives it, because the parts that
 # make concurrency safe are the parts a human forgets:
 #
-#   * a compose PROJECT NAME derived from the branch (`-p ht-ci-<branch>`), which
+#   * a compose PROJECT NAME derived from the branch (`-p circa-ci-<branch>`), which
 #     is what gives each stack its own containers, its own bridge network and its
 #     own volumes. Two stacks with the same project name are ONE stack, and the
 #     second worker's `down -v` takes the first worker's database with it.
@@ -36,9 +36,9 @@
 #                flag away rather than a compose-file edit.
 #
 # Usage (all of it via ci.sh — this is what it runs):
-#   docker compose -p ht-ci-feat-parallel-ci -f docker-compose.ci.yml up -d
-#   docker compose -p ht-ci-feat-parallel-ci -f docker-compose.ci.yml exec app php artisan test
-#   docker compose -p ht-ci-feat-parallel-ci -f docker-compose.ci.yml down -v
+#   docker compose -p circa-ci-feat-parallel-ci -f docker-compose.ci.yml up -d
+#   docker compose -p circa-ci-feat-parallel-ci -f docker-compose.ci.yml exec app php artisan test
+#   docker compose -p circa-ci-feat-parallel-ci -f docker-compose.ci.yml down -v
 # =============================================================================
 
 services:
@@ -49,7 +49,7 @@ services:
   # `vendor/` composer writes into the bind mount is owned by that same user —
   # not root.
   #
-  # THE IMAGE TAG IS `:ci`, NOT `:latest`, AND THAT IS THE WHOLE POINT.
+  # THE IMAGE TAG IS `circa/app:ci`, NOT `:latest`, AND THAT IS THE WHOLE POINT.
   # `docker-compose.yml` runs production off `health-tracker/app:latest`.
   # Building `:latest` from a worktree would silently re-point the tag the live
   # containers were created from, so the next `docker compose up -d` on the main
@@ -62,7 +62,7 @@ services:
       args:
         APP_UID: '990'
         APP_GID: '983'
-    image: '${CI_APP_IMAGE:-health-tracker/app:ci}'
+    image: circa/app:ci
     user: '990:983'
     # A parked container, not php-fpm. Everything happens through
     # `docker compose exec`, and an idle fpm master plus its children is memory
@@ -222,7 +222,7 @@ services:
 
 networks:
   # Named `ci` and left to compose to prefix with the project name, so the two
-  # stacks get `ht-ci-<branch-a>_ci` and `ht-ci-<branch-b>_ci` — separate bridge
+  # stacks get `circa-ci-<branch-a>_ci` and `circa-ci-<branch-b>_ci` — separate bridge
   # networks, separate DNS. `postgres` resolves to a different container in each,
   # which is what lets both stacks use the identical `.env.testing`.
   ci:
